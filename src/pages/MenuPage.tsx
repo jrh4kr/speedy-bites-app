@@ -1,0 +1,131 @@
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { FoodCard } from '@/components/food/FoodCard';
+import { StickyCartButton } from '@/components/cart/StickyCartButton';
+import { EmptySearch } from '@/components/ui/EmptyState';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { mockCategories, mockMenuItems } from '@/data/mockData';
+
+export const MenuPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const activeCategory = searchParams.get('category') || 'all';
+
+  const filteredItems = useMemo(() => {
+    let items = mockMenuItems;
+    
+    // Filter by category
+    if (activeCategory !== 'all') {
+      items = items.filter(item => item.categoryId === activeCategory);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      items = items.filter(item => 
+        item.name.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query)
+      );
+    }
+    
+    return items;
+  }, [activeCategory, searchQuery]);
+
+  const handleCategoryChange = (categoryId: string) => {
+    if (categoryId === 'all') {
+      searchParams.delete('category');
+    } else {
+      searchParams.set('category', categoryId);
+    }
+    setSearchParams(searchParams);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header title="Menu" showBack />
+      
+      <main className="pb-4">
+        {/* Search Bar */}
+        <div className="px-4 mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search meals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 h-12 bg-card shadow-card"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 mb-5">
+          <button
+            onClick={() => handleCategoryChange('all')}
+            className={cn(
+              'flex-shrink-0 px-4 py-2 rounded-full font-medium text-sm transition-colors',
+              activeCategory === 'all'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground shadow-card'
+            )}
+          >
+            All
+          </button>
+          {mockCategories.map(category => (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryChange(category.id)}
+              className={cn(
+                'flex-shrink-0 px-4 py-2 rounded-full font-medium text-sm transition-colors',
+                activeCategory === category.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground shadow-card'
+              )}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Results */}
+        <div className="px-4">
+          {filteredItems.length === 0 ? (
+            <EmptySearch query={searchQuery} onClear={clearSearch} />
+          ) : (
+            <>
+              <p className="mb-3 text-sm text-muted-foreground">
+                {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {filteredItems.map(item => (
+                  <FoodCard key={item.id} item={item} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </main>
+
+      <StickyCartButton />
+    </div>
+  );
+};
+
+export default MenuPage;

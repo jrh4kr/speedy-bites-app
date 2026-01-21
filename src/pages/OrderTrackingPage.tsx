@@ -1,0 +1,197 @@
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapPin, Phone, User, Clock, Receipt, ChefHat } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { OrderProgress, OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
+import { Button } from '@/components/ui/button';
+import { formatPrice } from '@/components/ui/PriceDisplay';
+import { mockOrders } from '@/data/mockData';
+
+export const OrderTrackingPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const order = mockOrders.find(o => o.id === id);
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Order Details" showBack />
+        <div className="flex flex-col items-center justify-center px-4 py-20">
+          <p className="text-muted-foreground">Order not found</p>
+          <Button onClick={() => navigate('/orders')} className="mt-4">
+            View All Orders
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-KE', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const isActive = ['confirmed', 'preparing', 'on_the_way'].includes(order.status);
+
+  return (
+    <div className="min-h-screen bg-background pb-8">
+      <Header title={`Order ${order.orderNumber}`} showBack />
+      
+      <main className="px-4 py-4 space-y-4">
+        {/* Status Card */}
+        <section className="rounded-xl bg-card p-4 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Order Status</h3>
+            <OrderStatusBadge status={order.status} />
+          </div>
+          
+          {isActive && (
+            <>
+              <OrderProgress status={order.status} className="mb-4" />
+              {order.estimatedDelivery && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>Estimated delivery: {order.estimatedDelivery}</span>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* Driver Info (if on the way) */}
+        {order.status === 'on_the_way' && order.driver && (
+          <section className="rounded-xl bg-card p-4 shadow-card">
+            <h3 className="font-semibold mb-4">Your Driver</h3>
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <User className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{order.driver.name}</p>
+                <p className="text-sm text-muted-foreground">{order.driver.phone}</p>
+              </div>
+              <a
+                href={`tel:${order.driver.phone}`}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-success text-success-foreground"
+              >
+                <Phone className="h-5 w-5" />
+              </a>
+            </div>
+          </section>
+        )}
+
+        {/* Delivery Address */}
+        <section className="rounded-xl bg-card p-4 shadow-card">
+          <div className="flex items-center gap-3 mb-3">
+            <MapPin className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Delivery Address</h3>
+          </div>
+          <p className="text-muted-foreground">
+            {order.address.street}
+            {order.address.landmark && <>, {order.address.landmark}</>}
+            <br />
+            {order.address.city}
+          </p>
+        </section>
+
+        {/* Order Items */}
+        <section className="rounded-xl bg-card p-4 shadow-card">
+          <div className="flex items-center gap-3 mb-4">
+            <Receipt className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Order Items</h3>
+          </div>
+          
+          <div className="space-y-3 mb-4">
+            {order.items.map(item => (
+              <div key={item.id} className="flex items-center gap-3">
+                <img
+                  src={item.menuItem.image}
+                  alt={item.menuItem.name}
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{item.menuItem.name}</p>
+                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                </div>
+                <span className="font-medium text-sm">{formatPrice(item.totalPrice)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatPrice(order.subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Delivery Fee</span>
+              <span>{order.deliveryFee > 0 ? formatPrice(order.deliveryFee) : 'Free'}</span>
+            </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-sm text-success">
+                <span>Discount</span>
+                <span>-{formatPrice(order.discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold border-t pt-2">
+              <span>Total</span>
+              <span>{formatPrice(order.total)}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Order Info */}
+        <section className="rounded-xl bg-card p-4 shadow-card">
+          <h3 className="font-semibold mb-3">Order Information</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Order Number</span>
+              <span className="font-medium">{order.orderNumber}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Order Date</span>
+              <span>{formatDate(order.createdAt)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Payment Method</span>
+              <span className="capitalize">{order.paymentMethod}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Payment Status</span>
+              <span className={order.paymentStatus === 'paid' ? 'text-success' : 'text-warning'}>
+                {order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Actions */}
+        <div className="space-y-3">
+          {order.status === 'delivered' && (
+            <Button 
+              onClick={() => navigate('/menu')}
+              className="w-full h-12"
+            >
+              Order Again
+            </Button>
+          )}
+          <Button 
+            variant="outline"
+            onClick={() => navigate('/help')}
+            className="w-full h-12"
+          >
+            Need Help?
+          </Button>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default OrderTrackingPage;
