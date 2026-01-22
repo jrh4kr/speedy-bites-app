@@ -2,6 +2,7 @@ import { ArrowLeft, Bell, ShoppingBag } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/ui/Logo';
 
 interface HeaderProps {
   title?: string;
@@ -46,9 +47,12 @@ export const Header = ({
             <h1 className="text-lg font-semibold">{title}</h1>
           )}
           {isHome && (
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Deliver to</span>
-              <span className="font-semibold text-sm">Nairobi, Kenya</span>
+            <div className="flex items-center gap-3">
+              <Logo size="sm" />
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Deliver to</span>
+                <span className="font-semibold text-sm">Nairobi, Kenya</span>
+              </div>
             </div>
           )}
         </div>

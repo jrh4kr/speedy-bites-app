@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Logo } from '@/components/ui/Logo';
 
 export const SplashScreen = () => {
   const navigate = useNavigate();
@@ -29,31 +29,26 @@ export const SplashScreen = () => {
   }, [navigate]);
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-primary">
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-primary via-primary to-primary-dark">
       {/* Logo */}
-      <div className="mb-8 animate-bounce-in">
-        <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-card shadow-xl">
-          <span className="text-4xl">🍗</span>
-        </div>
+      <div className="mb-4 animate-bounce-in">
+        <Logo size="xl" className="drop-shadow-2xl" />
       </div>
       
-      {/* Brand name */}
-      <h1 className="mb-2 text-3xl font-bold text-primary-foreground animate-fade-in">
-        Kuku Ni Sisi
-      </h1>
-      <p className="mb-8 text-primary-foreground/80 animate-fade-in">
-        Finger-lickin' good!
+      {/* Tagline */}
+      <p className="mb-8 text-lg font-semibold text-primary-foreground/90 animate-fade-in">
+        Think Kuku! Think Sisi.
       </p>
       
       {/* Loading indicator */}
       <div className="flex flex-col items-center gap-4 animate-fade-in">
-        <LoadingSpinner className="border-primary-foreground/30 border-t-primary-foreground" />
-        <div className="h-1 w-32 overflow-hidden rounded-full bg-primary-foreground/20">
+        <div className="h-1 w-40 overflow-hidden rounded-full bg-primary-foreground/20">
           <div 
             className="h-full bg-primary-foreground transition-all duration-200"
             style={{ width: `${progress}%` }}
           />
         </div>
+        <p className="text-sm text-primary-foreground/70">Loading deliciousness...</p>
       </div>
     </div>
   );
