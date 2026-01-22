@@ -1,5 +1,105 @@
 import type { Category, MenuItem, Order, Promo } from '@/lib/api';
 
+// ============= ADMIN & RIDER MOCK DATA =============
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'rider' | 'customer';
+  phone?: string;
+  avatar?: string;
+}
+
+export interface Rider {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  status: 'available' | 'busy' | 'offline';
+  currentOrder?: string;
+  completedToday: number;
+  rating: number;
+  avatar?: string;
+}
+
+export interface AdminOrder extends Order {
+  rider?: Rider;
+  customerName: string;
+  customerPhone: string;
+}
+
+// Test accounts
+export const mockAdminUsers: AdminUser[] = [
+  {
+    id: 'admin-001',
+    email: 'admin@kukunisisi.com',
+    name: 'Admin User',
+    role: 'admin',
+    phone: '+254 700 000 001',
+  },
+  {
+    id: 'rider-001',
+    email: 'rider@kukunisisi.com',
+    name: 'John Rider',
+    role: 'rider',
+    phone: '+254 712 345 678',
+  },
+];
+
+export const mockRiders: Rider[] = [
+  {
+    id: 'rider-001',
+    name: 'John M.',
+    phone: '+254 712 345 678',
+    email: 'john.rider@kukunisisi.com',
+    status: 'busy',
+    currentOrder: 'ord-002',
+    completedToday: 5,
+    rating: 4.8,
+  },
+  {
+    id: 'rider-002',
+    name: 'Peter K.',
+    phone: '+254 722 111 222',
+    email: 'peter.rider@kukunisisi.com',
+    status: 'available',
+    completedToday: 3,
+    rating: 4.5,
+  },
+  {
+    id: 'rider-003',
+    name: 'Mary W.',
+    phone: '+254 733 333 444',
+    email: 'mary.rider@kukunisisi.com',
+    status: 'offline',
+    completedToday: 0,
+    rating: 4.9,
+  },
+];
+
+// Dashboard stats
+export const mockDashboardStats = {
+  todayOrders: 47,
+  todayRevenue: 89500,
+  pendingOrders: 12,
+  activeRiders: 5,
+  avgDeliveryTime: '28 mins',
+  customerSatisfaction: 4.6,
+};
+
+export const mockRevenueData = [
+  { day: 'Mon', revenue: 45000, orders: 23 },
+  { day: 'Tue', revenue: 52000, orders: 28 },
+  { day: 'Wed', revenue: 48000, orders: 25 },
+  { day: 'Thu', revenue: 61000, orders: 32 },
+  { day: 'Fri', revenue: 78000, orders: 41 },
+  { day: 'Sat', revenue: 95000, orders: 52 },
+  { day: 'Sun', revenue: 89500, orders: 47 },
+];
+
+// ============= CUSTOMER MOCK DATA =============
+
 export const mockCategories: Category[] = [
   {
     id: 'chicken',
@@ -246,6 +346,13 @@ export const mockOrders: Order[] = [
   },
 ];
 
+export const mockAdminOrders: AdminOrder[] = mockOrders.map(order => ({
+  ...order,
+  customerName: 'Customer ' + order.id.slice(-3),
+  customerPhone: '+254 7XX XXX XXX',
+  rider: order.status === 'on_the_way' ? mockRiders[0] : undefined,
+}));
+
 export const mockPromos: Promo[] = [
   {
     id: 'promo-1',
@@ -284,5 +391,75 @@ export const promoBanners = [
     subtitle: 'On orders above KES 1500',
     image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80',
     link: '/menu',
+  },
+];
+
+// Rider-specific orders
+export const mockRiderOrders = [
+  {
+    id: 'ord-004',
+    orderNumber: 'KNS-2024-004',
+    status: 'ready_for_pickup',
+    customerName: 'Alice K.',
+    customerPhone: '+254 722 888 999',
+    items: [
+      { name: '8-Piece Bucket', quantity: 1 },
+      { name: 'Loaded Fries', quantity: 2 },
+    ],
+    total: 1900,
+    address: {
+      street: '45 Waiyaki Way',
+      city: 'Westlands, Nairobi',
+      landmark: 'Behind Sarit Centre',
+    },
+    distance: '3.2 km',
+    estimatedTime: '15 mins',
+  },
+  {
+    id: 'ord-005',
+    orderNumber: 'KNS-2024-005',
+    status: 'ready_for_pickup',
+    customerName: 'Bob M.',
+    customerPhone: '+254 733 111 222',
+    items: [
+      { name: 'Family Feast', quantity: 1 },
+    ],
+    total: 2500,
+    address: {
+      street: '78 Langata Road',
+      city: 'Langata, Nairobi',
+    },
+    distance: '5.8 km',
+    estimatedTime: '25 mins',
+  },
+];
+
+export const mockDeliveryHistory = [
+  {
+    id: 'del-001',
+    orderNumber: 'KNS-2024-098',
+    customerName: 'Jane D.',
+    total: 1450,
+    deliveredAt: '2024-01-20T10:30:00Z',
+    rating: 5,
+    tip: 100,
+  },
+  {
+    id: 'del-002',
+    orderNumber: 'KNS-2024-095',
+    customerName: 'Mike S.',
+    total: 850,
+    deliveredAt: '2024-01-20T09:15:00Z',
+    rating: 4,
+    tip: 50,
+  },
+  {
+    id: 'del-003',
+    orderNumber: 'KNS-2024-091',
+    customerName: 'Sarah W.',
+    total: 2200,
+    deliveredAt: '2024-01-19T18:45:00Z',
+    rating: 5,
+    tip: 150,
   },
 ];
