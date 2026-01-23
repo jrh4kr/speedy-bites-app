@@ -1,4 +1,4 @@
-import { Clock, ChefHat, Truck, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, ChefHat, Truck, CheckCircle2, XCircle, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { OrderStatus } from '@/lib/api';
 
@@ -28,6 +28,11 @@ const statusConfig: Record<OrderStatus, {
     label: 'Preparing',
     icon: ChefHat,
     className: 'bg-accent/20 text-accent-foreground',
+  },
+  ready_for_pickup: {
+    label: 'Ready for Pickup',
+    icon: Package,
+    className: 'bg-purple-100 text-purple-700',
   },
   on_the_way: {
     label: 'On the Way',
