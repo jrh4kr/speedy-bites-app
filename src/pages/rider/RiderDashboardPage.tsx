@@ -5,7 +5,6 @@ import {
   MapPin, 
   Phone, 
   CheckCircle, 
-  Clock, 
   LogOut, 
   Navigation,
   Star,
@@ -18,6 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Logo } from '@/components/ui/Logo';
 import { PriceDisplay } from '@/components/ui/PriceDisplay';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { NotificationCenter, useNotifications } from '@/components/notifications/NotificationCenter';
+import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { toast } from 'sonner';
 import { mockRiderOrders, mockDeliveryHistory } from '@/data/mockData';
 
@@ -44,6 +46,10 @@ export const RiderDashboardPage = () => {
   const [availableOrders, setAvailableOrders] = useState(mockRiderOrders);
   const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
   const [riderStatus, setRiderStatus] = useState<'online' | 'offline'>('online');
+  const { notifications, markAsRead, clearAll, addNotification } = useNotifications('rider');
+
+  // Simulated rider location (would be from GPS in real app)
+  const [riderLocation, setRiderLocation] = useState({ lat: -1.2900, lng: 36.8200, label: 'Your Location' });
 
   const handleLogout = () => {
     localStorage.removeItem('rider_user');
@@ -59,17 +65,34 @@ export const RiderDashboardPage = () => {
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
     setActiveTab('active');
     toast.success('Order accepted!');
+    addNotification({
+      type: 'assigned',
+      title: 'Order Accepted',
+      message: `You accepted order ${order.orderNumber}. Head to the restaurant for pickup.`,
+    });
   };
 
   const updateDeliveryStatus = (newStatus: DeliveryStatus) => {
     if (activeDelivery) {
       if (newStatus === 'delivered') {
         toast.success('Delivery completed! 🎉');
+        addNotification({
+          type: 'delivered',
+          title: 'Delivery Complete!',
+          message: `Order ${activeDelivery.orderNumber} has been delivered successfully.`,
+        });
         setActiveDelivery(null);
         setActiveTab('available');
       } else {
         setActiveDelivery({ ...activeDelivery, status: newStatus });
         toast.success(`Status updated to: ${newStatus.replace('_', ' ')}`);
+        
+        // Simulate rider movement
+        if (newStatus === 'on_the_way') {
+          setRiderLocation({ lat: -1.2880, lng: 36.8180, label: 'Your Location' });
+        } else if (newStatus === 'arrived') {
+          setRiderLocation({ lat: -1.2750, lng: 36.8150, label: 'Your Location' });
+        }
       }
     }
   };
@@ -91,6 +114,11 @@ export const RiderDashboardPage = () => {
     rating: 4.8,
   };
 
+  // Customer location for active delivery
+  const customerLocation = activeDelivery 
+    ? { lat: -1.2750, lng: 36.8150, label: activeDelivery.address.street }
+    : undefined;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -101,13 +129,19 @@ export const RiderDashboardPage = () => {
             <div>
               <h1 className="font-bold text-sm">Rider Dashboard</h1>
               <Badge 
-                className={riderStatus === 'online' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                className={riderStatus === 'online' ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'}
               >
                 {riderStatus}
               </Badge>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <NotificationCenter 
+              notifications={notifications}
+              onMarkAsRead={markAsRead}
+              onClearAll={clearAll}
+            />
             <Button variant="outline" size="sm" onClick={toggleStatus}>
               {riderStatus === 'online' ? 'Go Offline' : 'Go Online'}
             </Button>
@@ -130,14 +164,14 @@ export const RiderDashboardPage = () => {
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <DollarSign className="h-5 w-5 mx-auto mb-1 text-green-600" />
+              <DollarSign className="h-5 w-5 mx-auto mb-1 text-success" />
               <PriceDisplay price={todayStats.earnings} className="text-xl font-bold" />
               <p className="text-xs text-muted-foreground">Earnings</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <Star className="h-5 w-5 mx-auto mb-1 text-yellow-500" />
+              <Star className="h-5 w-5 mx-auto mb-1 text-warning" />
               <p className="text-xl font-bold">{todayStats.rating}</p>
               <p className="text-xs text-muted-foreground">Rating</p>
             </CardContent>
@@ -214,19 +248,23 @@ export const RiderDashboardPage = () => {
         <TabsContent value="active" className="mt-4">
           {activeDelivery && (
             <div className="space-y-4">
-              {/* Map Placeholder */}
+              {/* Live Map */}
               <Card className="overflow-hidden">
-                <div className="h-48 bg-muted flex items-center justify-center relative">
-                  <div className="text-center">
-                    <Navigation className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <p className="text-sm text-muted-foreground">Map View</p>
+                <DeliveryMap
+                  riderLocation={riderLocation}
+                  customerLocation={customerLocation}
+                  showRoute={true}
+                  className="h-56"
+                />
+                <div className="p-3 flex justify-between items-center border-t">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Navigation className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">ETA: 15 mins</span>
                   </div>
-                  <div className="absolute bottom-2 right-2">
-                    <Button size="sm" variant="secondary">
-                      <Navigation className="h-4 w-4 mr-1" />
-                      Navigate
-                    </Button>
-                  </div>
+                  <Button size="sm" variant="secondary">
+                    <Navigation className="h-4 w-4 mr-1" />
+                    Open Maps
+                  </Button>
                 </div>
               </Card>
 
@@ -235,7 +273,7 @@ export const RiderDashboardPage = () => {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-lg">{activeDelivery.orderNumber}</CardTitle>
-                    <Badge className="bg-blue-100 text-blue-700">
+                    <Badge className="bg-primary/20 text-primary">
                       {activeDelivery.status.replace('_', ' ')}
                     </Badge>
                   </div>
@@ -333,11 +371,11 @@ export const RiderDashboardPage = () => {
                   <div className="text-right">
                     <PriceDisplay price={delivery.total} className="font-semibold" />
                     <div className="flex items-center gap-1 justify-end">
-                      <Star className="h-4 w-4 text-yellow-500" />
+                      <Star className="h-4 w-4 text-warning" />
                       <span className="text-sm">{delivery.rating}</span>
                     </div>
                     {delivery.tip > 0 && (
-                      <span className="text-xs text-green-600">
+                      <span className="text-xs text-success">
                         +KES {delivery.tip} tip
                       </span>
                     )}

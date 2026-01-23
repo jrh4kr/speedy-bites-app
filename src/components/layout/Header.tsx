@@ -1,8 +1,10 @@
-import { ArrowLeft, Bell, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/Logo';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { NotificationCenter, useNotifications } from '@/components/notifications/NotificationCenter';
 
 interface HeaderProps {
   title?: string;
@@ -22,6 +24,7 @@ export const Header = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { itemCount } = useCart();
+  const { notifications, markAsRead, clearAll } = useNotifications('customer');
 
   const isHome = location.pathname === '/';
 
@@ -59,11 +62,13 @@ export const Header = ({
 
         {/* Right */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {isHome && (
-            <button className="relative flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card transition-transform active:scale-95">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
-            </button>
+            <NotificationCenter
+              notifications={notifications}
+              onMarkAsRead={markAsRead}
+              onClearAll={clearAll}
+            />
           )}
           {showCart && (
             <Link 
@@ -83,3 +88,5 @@ export const Header = ({
     </header>
   );
 };
+
+export default Header;
