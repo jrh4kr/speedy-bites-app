@@ -1,3 +1,5 @@
+import logoImage from '@/assets/logo.jpg';
+
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
@@ -13,9 +15,9 @@ export const Logo = ({ size = 'md', className = '' }: LogoProps) => {
 
   return (
     <img 
-      src="https://i.imgur.com/qsKfHzO.jpeg" 
+      src={logoImage} 
       alt="Kuku Ni Sisi" 
-      className={`${sizes[size]} object-contain ${className}`}
+      className={`${sizes[size]} object-contain rounded-full ${className}`}
     />
   );
 };

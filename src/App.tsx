@@ -26,10 +26,10 @@ import NotFound from "@/pages/NotFound";
 // Admin Pages
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
-import AdminOrdersPage from "@/pages/admin/AdminOrdersPage";
-import AdminMenuPage from "@/pages/admin/AdminMenuPage";
-import AdminRidersPage from "@/pages/admin/AdminRidersPage";
-import AdminReportsPage from "@/pages/admin/AdminReportsPage";
+
+// Rider Pages
+import RiderLoginPage from "@/pages/rider/RiderLoginPage";
+import RiderDashboardPage from "@/pages/rider/RiderDashboardPage";
 
 const queryClient = new QueryClient();
 
@@ -62,13 +62,15 @@ const App = () => (
                 <Route path="/help" element={<HelpPage />} />
               </Route>
               
-              {/* Admin Routes */}
+              {/* Admin Routes - Single Dashboard */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/admin/orders" element={<AdminOrdersPage />} />
-              <Route path="/admin/menu" element={<AdminMenuPage />} />
-              <Route path="/admin/riders" element={<AdminRidersPage />} />
-              <Route path="/admin/reports" element={<AdminReportsPage />} />
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              
+              {/* Rider Routes */}
+              <Route path="/rider/login" element={<RiderLoginPage />} />
+              <Route path="/rider/dashboard" element={<RiderDashboardPage />} />
+              <Route path="/rider" element={<RiderDashboardPage />} />
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
