@@ -1,9 +1,12 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, User, Clock, Receipt, ChefHat } from 'lucide-react';
+import { MapPin, Phone, User, Clock, Receipt, Bell } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { OrderProgress, OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/components/ui/PriceDisplay';
+import { DeliveryMap } from '@/components/map/DeliveryMap';
+import { toast } from 'sonner';
 import { mockOrders } from '@/data/mockData';
 
 export const OrderTrackingPage = () => {
@@ -11,6 +14,33 @@ export const OrderTrackingPage = () => {
   const navigate = useNavigate();
 
   const order = mockOrders.find(o => o.id === id);
+
+  // Simulated real-time rider location
+  const [riderLocation, setRiderLocation] = useState({ lat: -1.2880, lng: 36.8180, label: 'Rider' });
+
+  // Simulate rider movement when order is on the way
+  useEffect(() => {
+    if (order?.status === 'on_the_way') {
+      const interval = setInterval(() => {
+        setRiderLocation(prev => ({
+          ...prev,
+          lat: prev.lat - 0.0005,
+          lng: prev.lng - 0.0002,
+        }));
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [order?.status]);
+
+  // Simulate notification when status changes
+  useEffect(() => {
+    if (order?.status === 'on_the_way') {
+      toast.info('🛵 Your order is on the way!', {
+        description: `${order.driver?.name} is heading to your location`,
+        duration: 5000,
+      });
+    }
+  }, [order?.status, order?.driver?.name]);
 
   if (!order) {
     return (
@@ -39,11 +69,37 @@ export const OrderTrackingPage = () => {
 
   const isActive = ['confirmed', 'preparing', 'on_the_way'].includes(order.status);
 
+  // Customer location from order address (simulated coordinates)
+  const customerLocation = { 
+    lat: -1.2750, 
+    lng: 36.8150, 
+    label: order.address.street 
+  };
+
   return (
     <div className="min-h-screen bg-background pb-8">
       <Header title={`Order ${order.orderNumber}`} showBack />
       
       <main className="px-4 py-4 space-y-4">
+        {/* Live Map for Active Orders */}
+        {order.status === 'on_the_way' && (
+          <section className="rounded-xl overflow-hidden shadow-card">
+            <DeliveryMap
+              riderLocation={riderLocation}
+              customerLocation={customerLocation}
+              showRoute={true}
+              className="h-48"
+            />
+            <div className="p-3 bg-card flex items-center justify-between border-t">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                <span className="text-sm text-muted-foreground">Live tracking</span>
+              </div>
+              <span className="text-sm font-medium">ETA: {order.estimatedDelivery}</span>
+            </div>
+          </section>
+        )}
+
         {/* Status Card */}
         <section className="rounded-xl bg-card p-4 shadow-card">
           <div className="flex items-center justify-between mb-4">

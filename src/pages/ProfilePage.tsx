@@ -8,10 +8,14 @@ import {
   LogOut, 
   ChevronRight,
   Settings,
-  Heart
+  Heart,
+  Moon,
+  Sun
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -28,10 +32,15 @@ const menuItems = [
 export const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -91,6 +100,24 @@ export const ProfilePage = () => {
               </button>
             );
           })}
+        </section>
+
+        {/* Dark Mode Toggle */}
+        <section className="mb-6 rounded-xl bg-card shadow-card overflow-hidden">
+          <div className="flex w-full items-center gap-4 px-4 py-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              {theme === 'dark' ? (
+                <Moon className="h-5 w-5 text-primary" />
+              ) : (
+                <Sun className="h-5 w-5 text-primary" />
+              )}
+            </div>
+            <span className="flex-1 font-medium">Dark Mode</span>
+            <Switch 
+              checked={theme === 'dark'} 
+              onCheckedChange={toggleTheme}
+            />
+          </div>
         </section>
 
         {/* Logout */}
