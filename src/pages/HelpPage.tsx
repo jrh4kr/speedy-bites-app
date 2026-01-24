@@ -65,7 +65,7 @@ export const HelpPage = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-8 lg:min-h-0 lg:bg-transparent lg:pb-0">
       <Header title="Help & Support" showBack />
       
       <main className="px-4 py-4 space-y-6">

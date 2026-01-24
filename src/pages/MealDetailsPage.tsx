@@ -21,7 +21,7 @@ export const MealDetailsPage = () => {
 
   if (!item) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
         <Header showBack />
         <div className="flex flex-col items-center justify-center px-4 py-20">
           <p className="text-muted-foreground">Item not found</p>
@@ -41,7 +41,7 @@ export const MealDetailsPage = () => {
   const totalPrice = item.price * quantity;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24 lg:min-h-0 lg:bg-transparent lg:pb-0">
       {/* Hero Image */}
       <div className="relative h-72 bg-muted">
         <img

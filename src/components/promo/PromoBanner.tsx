@@ -59,12 +59,12 @@ export const PromoBanner = ({
 
 export const PromoCarousel = ({ promos }: { promos: PromoBannerProps[] }) => {
   return (
-    <div className="flex gap-4 overflow-x-auto no-scrollbar px-4 -mx-4 pb-2">
+    <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-6 px-6 pb-2 lg:overflow-visible lg:px-0 lg:mx-0 lg:grid lg:grid-cols-2 lg:gap-6">
       {promos.map((promo, index) => (
         <PromoBanner 
           key={index} 
           {...promo} 
-          className="flex-shrink-0 w-[85vw] max-w-sm"
+          className="flex-shrink-0 w-[85vw] max-w-sm lg:flex-shrink lg:w-auto"
         />
       ))}
     </div>
