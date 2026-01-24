@@ -61,7 +61,7 @@ export const Header = ({
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <ThemeToggle />
           {isHome && (
             <NotificationCenter

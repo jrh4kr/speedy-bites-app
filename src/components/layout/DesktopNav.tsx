@@ -68,7 +68,7 @@ export const DesktopNav = ({
             </div>
 
             {/* Right - Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <ThemeToggle />
               <NotificationCenter notifications={notifications} onMarkAsRead={markAsRead} onClearAll={clearAll} />
               <Link to="/cart" className="relative flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors">
