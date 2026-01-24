@@ -26,6 +26,14 @@ import OnboardingPage from "./pages/OnboardingPage";
 import SplashScreen from "./pages/SplashScreen";
 import NotFound from "./pages/NotFound";
 
+// Profile Sub-Pages
+import EditProfilePage from "./pages/profile/EditProfilePage";
+import AddressesPage from "./pages/profile/AddressesPage";
+import PaymentsPage from "./pages/profile/PaymentsPage";
+import NotificationsPage from "./pages/profile/NotificationsPage";
+import FavoritesPage from "./pages/FavoritesPage";
+import SettingsPage from "./pages/SettingsPage";
+
 // Pages - Admin
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -66,6 +74,12 @@ const App = () => (
                   <Route path="/orders" element={<OrdersPage />} />
                   <Route path="/orders/:id" element={<OrderTrackingPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/profile/edit" element={<EditProfilePage />} />
+                  <Route path="/profile/addresses" element={<AddressesPage />} />
+                  <Route path="/profile/payments" element={<PaymentsPage />} />
+                  <Route path="/profile/notifications" element={<NotificationsPage />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/help" element={<HelpPage />} />
                 </Route>
                 
