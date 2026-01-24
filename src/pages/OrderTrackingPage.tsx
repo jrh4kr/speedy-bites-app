@@ -44,7 +44,7 @@ export const OrderTrackingPage = () => {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
         <Header title="Order Details" showBack />
         <div className="flex flex-col items-center justify-center px-4 py-20">
           <p className="text-muted-foreground">Order not found</p>
@@ -77,7 +77,7 @@ export const OrderTrackingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-8 lg:min-h-0 lg:bg-transparent lg:pb-0">
       <Header title={`Order ${order.orderNumber}`} showBack />
       
       <main className="px-4 py-4 space-y-4">

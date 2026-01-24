@@ -30,7 +30,7 @@ export const Header = ({
 
   return (
     <header className={cn(
-      'sticky top-0 z-40 safe-top transition-colors',
+      'sticky top-0 z-40 safe-top transition-colors lg:hidden',
       transparent ? 'bg-transparent' : 'bg-background/95 backdrop-blur-sm',
       className
     )}>

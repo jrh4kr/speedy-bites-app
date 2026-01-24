@@ -44,7 +44,7 @@ export const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-8 lg:min-h-0 lg:bg-transparent lg:pb-0">
       <Header title="Profile" />
       
       <main className="px-4 py-4">

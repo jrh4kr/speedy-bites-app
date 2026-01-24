@@ -47,9 +47,9 @@ export const PaymentPage = () => {
   const simulateFailure = () => setStatus('failed');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b lg:hidden">
         <div className="flex items-center px-4 py-3">
           {status === 'input' && (
             <button

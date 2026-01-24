@@ -49,12 +49,12 @@ export const MenuPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
       <Header title="Menu" showBack />
       
-      <main className="pb-4">
-        {/* Search Bar */}
-        <div className="px-4 mb-4">
+      <main className="pb-4 lg:pb-0">
+        {/* Search Bar - Hidden on desktop */}
+        <div className="px-4 mb-4 lg:hidden">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -76,7 +76,7 @@ export const MenuPage = () => {
         </div>
 
         {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 mb-5">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-5">
           <button
             onClick={() => handleCategoryChange('all')}
             className={cn(
@@ -105,7 +105,7 @@ export const MenuPage = () => {
         </div>
 
         {/* Results */}
-        <div className="px-4">
+        <div>
           {filteredItems.length === 0 ? (
             <EmptySearch query={searchQuery} onClear={clearSearch} />
           ) : (
@@ -113,7 +113,7 @@ export const MenuPage = () => {
               <p className="mb-3 text-sm text-muted-foreground">
                 {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredItems.map(item => (
                   <FoodCard key={item.id} item={item} />
                 ))}

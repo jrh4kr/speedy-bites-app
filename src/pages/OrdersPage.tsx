@@ -11,7 +11,7 @@ export const OrdersPage = () => {
 
   if (mockOrders.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
         <Header title="My Orders" showBack />
         <EmptyOrders onBrowse={() => navigate('/menu')} />
       </div>
@@ -30,7 +30,7 @@ export const OrdersPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
       <Header title="My Orders" showBack />
       
       <main className="px-4 py-4">

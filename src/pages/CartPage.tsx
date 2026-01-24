@@ -14,7 +14,7 @@ export const CartPage = () => {
 
   if (itemCount === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
         <Header title="Your Cart" showBack showCart={false} />
         <EmptyCart onBrowse={() => navigate('/menu')} />
       </div>
@@ -22,7 +22,7 @@ export const CartPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-screen bg-background pb-32 lg:min-h-0 lg:bg-transparent lg:pb-0">
       <Header title="Your Cart" showBack showCart={false} />
       
       <main className="px-4 py-4">
