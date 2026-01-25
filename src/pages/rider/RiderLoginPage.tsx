@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bike, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,35 +7,67 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Logo } from '@/components/ui/Logo';
 import { toast } from 'sonner';
-import { mockAdminUsers } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const RiderLoginPage = () => {
   const navigate = useNavigate();
+  const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirect if already authenticated as rider
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'rider' && !authLoading) {
+      navigate('/rider/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const { error } = await login(email, password);
+      
+      if (error) {
+        toast.error(error.message || 'Invalid credentials');
+        setIsLoading(false);
+        return;
+      }
 
-    // Mock authentication
-    const rider = mockAdminUsers.find(u => u.email === email && u.role === 'rider');
-    
-    if (rider && password === 'rider123') {
-      localStorage.setItem('rider_user', JSON.stringify(rider));
-      toast.success('Welcome back, ' + rider.name);
-      navigate('/rider/dashboard');
-    } else {
-      toast.error('Invalid credentials. Try rider@kukunisisi.com / rider123');
+      toast.success('Checking rider access...');
+      
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 2000);
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
+
+  // Check role after auth state updates
+  useEffect(() => {
+    if (isAuthenticated && user && !authLoading) {
+      if (user.role === 'rider') {
+        toast.success('Welcome back, ' + (user.name || 'Rider') + '!');
+        navigate('/rider/dashboard', { replace: true });
+      } else if (isLoading) {
+        toast.error('You do not have rider access');
+        setIsLoading(false);
+      }
+    }
+  }, [user, isAuthenticated, authLoading, navigate, isLoading]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -56,10 +88,11 @@ export const RiderLoginPage = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="rider@kukunisisi.com"
+                placeholder="rider@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -73,6 +106,7 @@ export const RiderLoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -80,6 +114,7 @@ export const RiderLoginPage = () => {
                   size="icon"
                   className="absolute right-0 top-0 h-full"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
@@ -92,11 +127,11 @@ export const RiderLoginPage = () => {
               ) : (
                 <Bike className="h-4 w-4 mr-2" />
               )}
-              Sign In
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
 
             <p className="text-xs text-center text-muted-foreground mt-4">
-              Test: rider@kukunisisi.com / rider123
+              Rider access requires the rider role to be assigned to your account.
             </p>
           </form>
         </CardContent>

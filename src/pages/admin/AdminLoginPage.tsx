@@ -1,37 +1,77 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/ui/Logo';
 import { toast } from 'sonner';
-import { mockAdminUsers } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const AdminLoginPage = () => {
   const navigate = useNavigate();
+  const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirect if already authenticated as admin
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin' && !authLoading) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login - check mock admin users
-    setTimeout(() => {
-      const admin = mockAdminUsers.find(u => u.email === email && u.role === 'admin');
-      if (admin || (email === 'admin@kukunisisi.com' && password === 'admin123')) {
-        localStorage.setItem('admin_user', JSON.stringify(admin || mockAdminUsers[0]));
-        toast.success('Welcome back, Admin!');
-        navigate('/admin/dashboard');
-      } else {
-        toast.error('Invalid credentials');
+    try {
+      const { error } = await login(email, password);
+      
+      if (error) {
+        toast.error(error.message || 'Invalid credentials');
+        setIsLoading(false);
+        return;
       }
+
+      // After successful login, we need to wait for the auth state to update
+      // and check if user has admin role
+      toast.success('Checking admin access...');
+      
+      // Give time for auth state to update
+      setTimeout(async () => {
+        // We'll be redirected by the useEffect if user is admin
+        // If not admin after a short delay, show error
+        setIsLoading(false);
+      }, 2000);
+    } catch (err) {
+      toast.error('An unexpected error occurred');
       setIsLoading(false);
-    }, 1000);
+    }
   };
+
+  // Check role after auth state updates
+  useEffect(() => {
+    if (isAuthenticated && user && !authLoading) {
+      if (user.role === 'admin') {
+        toast.success('Welcome back, Admin!');
+        navigate('/admin/dashboard', { replace: true });
+      } else if (isLoading) {
+        toast.error('You do not have admin access');
+        setIsLoading(false);
+      }
+    }
+  }, [user, isAuthenticated, authLoading, navigate, isLoading]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
@@ -53,11 +93,12 @@ export const AdminLoginPage = () => {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   type="email"
-                  placeholder="admin@kukunisisi.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -73,11 +114,13 @@ export const AdminLoginPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
                 </button>
@@ -85,16 +128,18 @@ export const AdminLoginPage = () => {
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : 'Sign In'}
             </Button>
           </form>
 
-          {/* Test credentials hint */}
           <div className="mt-6 p-3 bg-muted/50 rounded-lg">
             <p className="text-xs text-muted-foreground text-center">
-              <strong>Test Credentials:</strong><br />
-              Email: admin@kukunisisi.com<br />
-              Password: admin123
+              Admin access requires the admin role to be assigned to your account.
             </p>
           </div>
         </CardContent>
