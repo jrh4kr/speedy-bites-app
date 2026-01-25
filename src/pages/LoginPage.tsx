@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, signUp, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(location.pathname === '/signup');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +24,13 @@ export const LoginPage = () => {
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -62,17 +70,48 @@ export const LoginPage = () => {
 
     setIsLoading(true);
     
-    // Simulate API call - replace with actual API integration
-    setTimeout(() => {
-      login('mock-token', {
-        id: '1',
-        name: formData.name || 'User',
-        email: formData.email,
-      });
+    try {
+      if (isSignUp) {
+        const { error } = await signUp(formData.email, formData.password, formData.name);
+        if (error) {
+          if (error.message.includes('already registered')) {
+            toast.error('This email is already registered. Please sign in instead.');
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+        toast.success('Account created successfully!');
+        navigate('/', { replace: true });
+      } else {
+        const { error } = await login(formData.email, formData.password);
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('Invalid email or password');
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+        toast.success('Welcome back!');
+        navigate('/', { replace: true });
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    } finally {
       setIsLoading(false);
-      navigate('/', { replace: true });
-    }, 1000);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -115,6 +154,7 @@ export const LoginPage = () => {
                   value={formData.name}
                   onChange={handleChange}
                   className={cn('pl-10 h-12', errors.name && 'border-destructive')}
+                  disabled={isLoading}
                 />
               </div>
               {errors.name && (
@@ -135,30 +175,13 @@ export const LoginPage = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className={cn('pl-10 h-12', errors.email && 'border-destructive')}
+                disabled={isLoading}
               />
             </div>
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email}</p>
             )}
           </div>
-
-          {isSignUp && (
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone (Optional)</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="+254 712 345 678"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="pl-10 h-12"
-                />
-              </div>
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
@@ -172,6 +195,7 @@ export const LoginPage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className={cn('pl-10 pr-10 h-12', errors.password && 'border-destructive')}
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -199,6 +223,7 @@ export const LoginPage = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className={cn('pl-10 h-12', errors.confirmPassword && 'border-destructive')}
+                  disabled={isLoading}
                 />
               </div>
               {errors.confirmPassword && (
@@ -220,7 +245,12 @@ export const LoginPage = () => {
             className="w-full h-14 text-base font-semibold"
             disabled={isLoading}
           >
-            {isLoading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Please wait...
+              </>
+            ) : isSignUp ? 'Create Account' : 'Sign In'}
           </Button>
         </form>
 
@@ -236,24 +266,6 @@ export const LoginPage = () => {
               {isSignUp ? 'Sign In' : 'Sign Up'}
             </button>
           </p>
-        </div>
-
-        {/* Social login placeholder */}
-        <div className="mt-8">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
-          <div className="mt-4 flex gap-3">
-            <Button variant="outline" className="flex-1 h-12">
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="h-5 w-5 mr-2" />
-              Google
-            </Button>
-          </div>
         </div>
       </div>
     </div>

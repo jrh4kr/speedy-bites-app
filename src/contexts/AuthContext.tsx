@@ -1,59 +1,141 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getAuthToken, setAuthToken, clearAuth, type User } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
+
+export interface User {
+  id: string;
+  email: string;
+  name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  role?: AppRole;
+}
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-  updateUser: (user: Partial<User>) => void;
+  login: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
+  logout: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USER_STORAGE_KEY = 'kuku_user';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem(USER_STORAGE_KEY);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if token exists and validate
-    const token = getAuthToken();
-    if (!token) {
-      setUser(null);
+  const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
+    try {
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', supabaseUser.id)
+        .maybeSingle();
+
+      // Fetch role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', supabaseUser.id)
+        .maybeSingle();
+
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: profile?.name,
+        phone: profile?.phone,
+        avatar_url: profile?.avatar_url,
+        role: roleData?.role || 'customer',
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        role: 'customer',
+      });
     }
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(USER_STORAGE_KEY);
-    }
-  }, [user]);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          // Defer the profile fetch to avoid deadlock
+          setTimeout(() => {
+            fetchUserProfile(session.user);
+          }, 0);
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
 
-  const login = useCallback((token: string, userData: User) => {
-    setAuthToken(token);
-    setUser(userData);
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserProfile]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error: error ? new Error(error.message) : null };
   }, []);
 
-  const logout = useCallback(() => {
-    clearAuth();
+  const signUp = useCallback(async (email: string, password: string, name?: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name: name || '',
+        },
+      },
+    });
+
+    if (!error && data.user) {
+      // Update the profile with the name if provided
+      if (name) {
+        await supabase
+          .from('profiles')
+          .update({ name })
+          .eq('user_id', data.user.id);
+      }
+    }
+
+    return { error: error ? new Error(error.message) : null };
+  }, []);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(USER_STORAGE_KEY);
+    setSession(null);
   }, []);
 
   const updateUser = useCallback((updates: Partial<User>) => {
@@ -64,9 +146,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        session,
+        isAuthenticated: !!session,
         isLoading,
         login,
+        signUp,
         logout,
         updateUser,
       }}
