@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, DollarSign, Clock, Users, TrendingUp, Bike, LayoutDashboard, BarChart3, LogOut, Menu, X } from 'lucide-react';
+import { Package, DollarSign, Clock, Users, TrendingUp, Bike, LayoutDashboard, BarChart3, LogOut, Menu, X, UtensilsCrossed } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,12 +13,14 @@ import { toast } from 'sonner';
 import { AdminOrdersSection } from '@/components/admin/AdminOrdersSection';
 import { AdminRidersSection } from '@/components/admin/AdminRidersSection';
 import { AdminReportsSection } from '@/components/admin/AdminReportsSection';
+import { AdminMenuSection } from '@/components/admin/AdminMenuSection';
 
 import { mockDashboardStats, mockRevenueData, mockAdminOrders } from '@/data/mockData';
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'orders', label: 'Orders', icon: Package },
+  { id: 'menu', label: 'Menu', icon: UtensilsCrossed },
   { id: 'riders', label: 'Riders', icon: Bike },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
 ];
@@ -129,6 +131,7 @@ export const AdminDashboardPage = () => {
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           {activeTab === 'dashboard' && <DashboardContent stats={stats} />}
           {activeTab === 'orders' && <AdminOrdersSection />}
+          {activeTab === 'menu' && <AdminMenuSection />}
           {activeTab === 'riders' && <AdminRidersSection />}
           {activeTab === 'reports' && <AdminReportsSection />}
         </main>
