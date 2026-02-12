@@ -215,6 +215,8 @@ export interface User {
   email: string;
   phone?: string;
   avatar?: string;
+  avatar_url?: string | null;
+  role?: 'customer' | 'rider' | 'admin';
   address?: Address;
 }
 
@@ -230,7 +232,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
-  password_confirmation: string;
+  password_confirmation?: string;
   phone?: string;
 }
 
@@ -248,11 +250,16 @@ export interface MenuItem {
   price: number;
   originalPrice?: number;
   image: string;
+  image_url?: string | null;
   category: string;
   categoryId: string;
+  category_id?: string | null;
   isAvailable: boolean;
+  is_available?: boolean;
   isFeatured?: boolean;
+  is_featured?: boolean;
   rating?: number;
+  preparation_time?: number;
   options?: MenuItemOption[];
 }
 
