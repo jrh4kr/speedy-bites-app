@@ -4,7 +4,7 @@ import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { NotificationCenter, useNotifications } from '@/components/notifications/NotificationCenter';
+
 import { Input } from '@/components/ui/input';
 const navItems = [{
   label: 'Home',
@@ -26,11 +26,7 @@ export const DesktopNav = ({
   const {
     itemCount
   } = useCart();
-  const {
-    notifications,
-    markAsRead,
-    clearAll
-  } = useNotifications('customer');
+  
   return <div className="min-h-screen bg-background">
       {/* Desktop Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b">
@@ -70,7 +66,7 @@ export const DesktopNav = ({
             {/* Right - Actions */}
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <NotificationCenter notifications={notifications} onMarkAsRead={markAsRead} onClearAll={clearAll} />
+              
               <Link to="/cart" className="relative flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors">
                 <ShoppingBag className="h-5 w-5" />
                 {itemCount > 0 && <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">

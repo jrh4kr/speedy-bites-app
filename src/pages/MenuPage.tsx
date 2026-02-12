@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
@@ -7,16 +7,42 @@ import { StickyCartButton } from '@/components/cart/StickyCartButton';
 import { EmptySearch } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { mockCategories, mockMenuItems } from '@/data/mockData';
+import { api } from '@/lib/api';
+import type { Category, MenuItem } from '@/lib/api';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export const MenuPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const activeCategory = searchParams.get('category') || 'all';
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch categories
+        const categoriesData = await api.getCategories();
+        setCategories(categoriesData || []);
+
+        // Fetch menu items
+        const itemsData = await api.getMenuItems();
+        setMenuItems(itemsData || []);
+
+      } catch (error) {
+        console.error('Error fetching menu data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const filteredItems = useMemo(() => {
-    let items = mockMenuItems;
+    let items = menuItems;
     
     // Filter by category
     if (activeCategory !== 'all') {
@@ -33,7 +59,7 @@ export const MenuPage = () => {
     }
     
     return items;
-  }, [activeCategory, searchQuery]);
+  }, [activeCategory, searchQuery, menuItems]);
 
   const handleCategoryChange = (categoryId: string) => {
     if (categoryId === 'all') {
@@ -47,6 +73,14 @@ export const MenuPage = () => {
   const clearSearch = () => {
     setSearchQuery('');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
@@ -88,7 +122,7 @@ export const MenuPage = () => {
           >
             All
           </button>
-          {mockCategories.map(category => (
+          {categories.map(category => (
             <button
               key={category.id}
               onClick={() => handleCategoryChange(category.id)}

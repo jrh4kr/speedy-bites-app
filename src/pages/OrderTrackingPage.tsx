@@ -7,16 +7,83 @@ import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/components/ui/PriceDisplay';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { toast } from 'sonner';
-import { mockOrders } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+
+interface Order {
+  id: string;
+  status: string;
+  total: number;
+  delivery_fee: number;
+  subtotal: number;
+  discount: number;
+  notes: string | null;
+  estimated_delivery_time: string | null;
+  created_at: string;
+  customer_id: string;
+  delivery_address_id: string | null;
+  order_items: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    notes: string | null;
+  }>;
+  delivery_address?: {
+    street: string;
+    city: string;
+    phone: string | null;
+  };
+}
+
+interface RiderAssignment {
+  rider_id: string;
+  status: string;
+  rider?: {
+    name: string;
+    phone: string;
+  };
+}
 
 export const OrderTrackingPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  const order = mockOrders.find(o => o.id === id);
+  const { user } = useAuth();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [riderAssignment, setRiderAssignment] = useState<RiderAssignment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Simulated real-time rider location
   const [riderLocation, setRiderLocation] = useState({ lat: -1.2880, lng: 36.8180, label: 'Rider' });
+
+  useEffect(() => {
+    if (id && user) {
+      fetchOrderDetails();
+    }
+  }, [id, user]);
+
+  const fetchOrderDetails = async () => {
+    try {
+      // Fetch order from API
+      const orderData = await api.getOrder(id!);
+      
+      if (!orderData) {
+        toast.error('Order not found');
+        navigate('/orders');
+        return;
+      }
+
+      setOrder(orderData as Order);
+      // Rider assignment would be fetched from API endpoint if it existed
+      setRiderAssignment(null);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      toast.error('Failed to load order details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Simulate rider movement when order is on the way
   useEffect(() => {
@@ -34,13 +101,27 @@ export const OrderTrackingPage = () => {
 
   // Simulate notification when status changes
   useEffect(() => {
-    if (order?.status === 'on_the_way') {
+    if (order?.status === 'on_the_way' && riderAssignment?.rider) {
       toast.info('🛵 Your order is on the way!', {
-        description: `${order.driver?.name} is heading to your location`,
+        description: `${riderAssignment.rider.name} is heading to your location`,
         duration: 5000,
       });
     }
-  }, [order?.status, order?.driver?.name]);
+  }, [order?.status, riderAssignment?.rider]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
+        <Header title="Order Details" showBack />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading order details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -73,12 +154,14 @@ export const OrderTrackingPage = () => {
   const customerLocation = { 
     lat: -1.2750, 
     lng: 36.8150, 
-    label: order.address.street 
+    label: order.delivery_address?.street || 'Delivery Address'
   };
+
+  const orderNumber = `ORD-${String(order.id).slice(-6).toUpperCase()}`;
 
   return (
     <div className="min-h-screen bg-background pb-8 lg:min-h-0 lg:bg-transparent lg:pb-0">
-      <Header title={`Order ${order.orderNumber}`} showBack />
+      <Header title={`Order ${orderNumber}`} showBack />
       
       <main className="px-4 py-4 space-y-4">
         {/* Live Map for Active Orders */}
@@ -95,7 +178,13 @@ export const OrderTrackingPage = () => {
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
                 <span className="text-sm text-muted-foreground">Live tracking</span>
               </div>
-              <span className="text-sm font-medium">ETA: {order.estimatedDelivery}</span>
+              <span className="text-sm font-medium">
+                ETA: {order.estimated_delivery_time ? 
+                  new Date(order.estimated_delivery_time).toLocaleTimeString('en-KE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  }) : 'TBD'}
+              </span>
             </div>
           </section>
         )}
@@ -104,36 +193,39 @@ export const OrderTrackingPage = () => {
         <section className="rounded-xl bg-card p-4 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">Order Status</h3>
-            <OrderStatusBadge status={order.status} />
+            <OrderStatusBadge status={order.status as any} />
           </div>
           
           {isActive && (
             <>
-              <OrderProgress status={order.status} className="mb-4" />
-              {order.estimatedDelivery && (
+              <OrderProgress status={order.status as any} className="mb-4" />
+              {order.estimated_delivery_time && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  <span>Estimated delivery: {order.estimatedDelivery}</span>
+                  <span>Estimated delivery: {new Date(order.estimated_delivery_time).toLocaleTimeString('en-KE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}</span>
                 </div>
               )}
             </>
           )}
         </section>
 
-        {/* Driver Info (if on the way) */}
-        {order.status === 'on_the_way' && order.driver && (
+        {/* Rider Info (if on the way) */}
+        {order.status === 'on_the_way' && riderAssignment?.rider && (
           <section className="rounded-xl bg-card p-4 shadow-card">
-            <h3 className="font-semibold mb-4">Your Driver</h3>
+            <h3 className="font-semibold mb-4">Your Rider</h3>
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <User className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">{order.driver.name}</p>
-                <p className="text-sm text-muted-foreground">{order.driver.phone}</p>
+                <p className="font-medium">{riderAssignment.rider.name}</p>
+                <p className="text-sm text-muted-foreground">{riderAssignment.rider.phone}</p>
               </div>
               <a
-                href={`tel:${order.driver.phone}`}
+                href={`tel:${riderAssignment.rider.phone}`}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-success text-success-foreground"
               >
                 <Phone className="h-5 w-5" />
@@ -143,18 +235,24 @@ export const OrderTrackingPage = () => {
         )}
 
         {/* Delivery Address */}
-        <section className="rounded-xl bg-card p-4 shadow-card">
-          <div className="flex items-center gap-3 mb-3">
-            <MapPin className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Delivery Address</h3>
-          </div>
-          <p className="text-muted-foreground">
-            {order.address.street}
-            {order.address.landmark && <>, {order.address.landmark}</>}
-            <br />
-            {order.address.city}
-          </p>
-        </section>
+        {order.delivery_address && (
+          <section className="rounded-xl bg-card p-4 shadow-card">
+            <div className="flex items-center gap-3 mb-3">
+              <MapPin className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Delivery Address</h3>
+            </div>
+            <p className="text-muted-foreground">
+              {order.delivery_address.street}
+              <br />
+              {order.delivery_address.city}
+            </p>
+            {order.delivery_address.phone && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Phone: {order.delivery_address.phone}
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Order Items */}
         <section className="rounded-xl bg-card p-4 shadow-card">
@@ -164,18 +262,19 @@ export const OrderTrackingPage = () => {
           </div>
           
           <div className="space-y-3 mb-4">
-            {order.items.map(item => (
+            {order.order_items.map(item => (
               <div key={item.id} className="flex items-center gap-3">
-                <img
-                  src={item.menuItem.image}
-                  alt={item.menuItem.name}
-                  className="h-14 w-14 rounded-lg object-cover"
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{item.menuItem.name}</p>
-                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                <div className="h-14 w-14 rounded-lg bg-muted flex items-center justify-center">
+                  <span className="text-lg">🍽️</span>
                 </div>
-                <span className="font-medium text-sm">{formatPrice(item.totalPrice)}</span>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                  {item.notes && (
+                    <p className="text-xs text-muted-foreground">Note: {item.notes}</p>
+                  )}
+                </div>
+                <span className="font-medium text-sm">{formatPrice(item.total_price)}</span>
               </div>
             ))}
           </div>
@@ -187,7 +286,7 @@ export const OrderTrackingPage = () => {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Delivery Fee</span>
-              <span>{order.deliveryFee > 0 ? formatPrice(order.deliveryFee) : 'Free'}</span>
+              <span>{order.delivery_fee > 0 ? formatPrice(order.delivery_fee) : 'Free'}</span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-sm text-success">

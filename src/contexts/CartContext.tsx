@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Cart, CartItem, MenuItem, CartItemOptions } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface CartContextType {
   cart: Cart;
@@ -8,7 +9,18 @@ interface CartContextType {
   updateQuantity: (cartItemId: string, quantity: number) => void;
   removeItem: (cartItemId: string) => void;
   clearCart: () => void;
-  applyPromo: (code: string) => void;
+  applyPromo: (code: string) => Promise<{ success: boolean; discount?: number; error?: string }>;
+  removePromo: () => void;
+}
+
+interface CartContextType {
+  cart: Cart;
+  itemCount: number;
+  addItem: (item: MenuItem, quantity?: number, options?: CartItemOptions) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
+  removeItem: (cartItemId: string) => void;
+  clearCart: () => void;
+  applyPromo: (code: string) => Promise<{ success: boolean; discount?: number; error?: string }>;
   removePromo: () => void;
 }
 
@@ -22,7 +34,9 @@ const defaultCart: Cart = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'kuku_cart';
+const CART_STORAGE_KEY = 'speedy_bites_cart';
+const DELIVERY_FEE = 150;
+const FREE_DELIVERY_THRESHOLD = 1000;
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<Cart>(() => {
@@ -37,23 +51,33 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return defaultCart;
   });
 
-  // Persist cart to localStorage
+  // Persist cart to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart]);
 
   const calculateTotals = useCallback((items: CartItem[], discount = 0, promoCode?: string): Cart => {
-    const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const deliveryFee = items.length > 0 ? 150 : 0;
+    // Calculate subtotal: sum of all item totalPrices (price * quantity)
+    const subtotal = items.reduce((sum, item) => {
+      const itemTotal = item.menuItem.price * item.quantity;
+      return sum + itemTotal;
+    }, 0);
+    
+    // Determine delivery fee: free if subtotal exceeds threshold, otherwise fixed fee
+    const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+    
+    // Calculate total: subtotal + delivery fee - discount
+    const total = Math.max(0, subtotal + deliveryFee - discount);
+    
     return {
       items,
       subtotal,
       deliveryFee,
       discount,
-      total: Math.max(0, subtotal + deliveryFee - discount),
-      promoCode,
+      total,
+      promoCode: promoCode || cart.promoCode,
     };
-  }, []);
+  }, [cart.promoCode]);
 
   const addItem = useCallback((item: MenuItem, quantity = 1, options?: CartItemOptions) => {
     setCart(prev => {
@@ -77,33 +101,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             : cartItem
         );
       } else {
-        // Add new item
-        const newItem: CartItem = {
-          id: `${item.id}_${Date.now()}`,
-          menuItem: item,
-          quantity,
-          options,
-          totalPrice: quantity * item.price,
-        };
-        newItems = [...prev.items, newItem];
+        // Add new item to cart
+        newItems = [
+          ...prev.items,
+          {
+            id: `${item.id}-${Date.now()}`,
+            menuItem: item,
+            quantity,
+            totalPrice: item.price * quantity,
+            options,
+          },
+        ];
       }
 
-      return calculateTotals(newItems, prev.discount, prev.promoCode);
-    });
-  }, [calculateTotals]);
-
-  const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
-    setCart(prev => {
-      if (quantity <= 0) {
-        const newItems = prev.items.filter(item => item.id !== cartItemId);
-        return calculateTotals(newItems, prev.discount, prev.promoCode);
-      }
-
-      const newItems = prev.items.map(item =>
-        item.id === cartItemId
-          ? { ...item, quantity, totalPrice: quantity * item.menuItem.price }
-          : item
-      );
       return calculateTotals(newItems, prev.discount, prev.promoCode);
     });
   }, [calculateTotals]);
@@ -115,24 +125,56 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [calculateTotals]);
 
+  const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItem(cartItemId);
+      return;
+    }
+
+    setCart(prev => {
+      const newItems = prev.items.map(item => {
+        if (item.id === cartItemId) {
+          const newQuantity = Math.max(0, quantity);
+          return {
+            ...item,
+            quantity: newQuantity,
+            totalPrice: item.menuItem.price * newQuantity,
+          };
+        }
+        return item;
+      });
+      return calculateTotals(newItems, prev.discount, prev.promoCode);
+    });
+  }, [calculateTotals, removeItem]);
+
   const clearCart = useCallback(() => {
     setCart(defaultCart);
   }, []);
 
-  const applyPromo = useCallback((code: string) => {
-    // In production, validate with API
-    // For now, mock 10% discount
-    setCart(prev => {
-      const discount = prev.subtotal * 0.1;
-      return { ...prev, discount, promoCode: code };
-    });
-  }, []);
+  const applyPromo = useCallback(async (code: string): Promise<{ success: boolean; discount?: number; error?: string }> => {
+    try {
+      // Call API to validate and apply promo code
+      const result = await api.validatePromoCode(code, cart.subtotal);
+      
+      setCart(prev => {
+        const newCart = calculateTotals(prev.items, result.discountAmount || 0, code);
+        return newCart;
+      });
+      
+      return { success: true, discount: result.discountAmount || 0 };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Invalid promo code',
+      };
+    }
+  }, [calculateTotals, cart.subtotal]);
 
   const removePromo = useCallback(() => {
-    setCart(prev => calculateTotals(prev.items, 0));
+    setCart(prev => calculateTotals(prev.items, 0, undefined));
   }, [calculateTotals]);
 
-  const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemCount = cart.items.length;
 
   return (
     <CartContext.Provider

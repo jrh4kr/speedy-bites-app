@@ -18,9 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Logo } from '@/components/ui/Logo';
 import { PriceDisplay } from '@/components/ui/PriceDisplay';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { NotificationCenter, useNotifications } from '@/components/notifications/NotificationCenter';
-import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import { mockRiderOrders, mockDeliveryHistory } from '@/data/mockData';
 
 type DeliveryStatus = 'picked_up' | 'on_the_way' | 'arrived' | 'delivered';
@@ -42,20 +41,36 @@ interface ActiveDelivery {
 
 export const RiderDashboardPage = () => {
   const navigate = useNavigate();
+  const { logout, user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('available');
   const [availableOrders, setAvailableOrders] = useState(mockRiderOrders);
   const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
   const [riderStatus, setRiderStatus] = useState<'online' | 'offline'>('online');
-  const { notifications, markAsRead, clearAll, addNotification } = useNotifications('rider');
+  const [notifications] = useState<{id: string; type: string; title: string; message: string}[]>([]);
+  const addNotification = (n: {type: string; title: string; message: string}) => { console.log('notification:', n); };
 
-  // Simulated rider location (would be from GPS in real app)
   const [riderLocation, setRiderLocation] = useState({ lat: -1.2900, lng: 36.8200, label: 'Your Location' });
 
-  const handleLogout = () => {
-    localStorage.removeItem('rider_user');
+  const handleLogout = async () => {
+    await logout();
     toast.success('Logged out successfully');
     navigate('/rider/login');
   };
+
+  // Access check
+  if (isAuthenticated && user && user.role !== 'rider') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <p className="text-lg font-semibold mb-2">Access Denied</p>
+            <p className="text-muted-foreground mb-4">You need rider privileges to access this page.</p>
+            <Button onClick={() => navigate('/')}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const acceptOrder = (order: typeof mockRiderOrders[0]) => {
     setActiveDelivery({
@@ -87,7 +102,6 @@ export const RiderDashboardPage = () => {
         setActiveDelivery({ ...activeDelivery, status: newStatus });
         toast.success(`Status updated to: ${newStatus.replace('_', ' ')}`);
         
-        // Simulate rider movement
         if (newStatus === 'on_the_way') {
           setRiderLocation({ lat: -1.2880, lng: 36.8180, label: 'Your Location' });
         } else if (newStatus === 'arrived') {
@@ -114,7 +128,6 @@ export const RiderDashboardPage = () => {
     rating: 4.8,
   };
 
-  // Customer location for active delivery
   const customerLocation = activeDelivery 
     ? { lat: -1.2750, lng: 36.8150, label: activeDelivery.address.street }
     : undefined;
@@ -137,11 +150,7 @@ export const RiderDashboardPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <NotificationCenter 
-              notifications={notifications}
-              onMarkAsRead={markAsRead}
-              onClearAll={clearAll}
-            />
+            
             <Button variant="outline" size="sm" onClick={toggleStatus}>
               {riderStatus === 'online' ? 'Go Offline' : 'Go Online'}
             </Button>
@@ -248,14 +257,11 @@ export const RiderDashboardPage = () => {
         <TabsContent value="active" className="mt-4">
           {activeDelivery && (
             <div className="space-y-4">
-              {/* Live Map */}
               <Card className="overflow-hidden">
-                <DeliveryMap
-                  riderLocation={riderLocation}
-                  customerLocation={customerLocation}
-                  showRoute={true}
-                  className="h-56"
-                />
+                <div className="h-56 bg-muted flex items-center justify-center text-muted-foreground">
+                  <Navigation className="h-8 w-8 mr-2" />
+                  <span>Delivery in progress</span>
+                </div>
                 <div className="p-3 flex justify-between items-center border-t">
                   <div className="flex items-center gap-2 text-sm">
                     <Navigation className="h-4 w-4 text-primary" />
@@ -268,7 +274,6 @@ export const RiderDashboardPage = () => {
                 </div>
               </Card>
 
-              {/* Order Details */}
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-center">
@@ -279,7 +284,6 @@ export const RiderDashboardPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Customer */}
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{activeDelivery.customerName}</p>
@@ -292,7 +296,6 @@ export const RiderDashboardPage = () => {
                     </Button>
                   </div>
 
-                  {/* Items */}
                   <div>
                     <p className="text-sm font-medium mb-2">Items:</p>
                     <div className="space-y-1">
@@ -308,7 +311,6 @@ export const RiderDashboardPage = () => {
                     </div>
                   </div>
 
-                  {/* Status Progress */}
                   <div className="flex justify-between py-3">
                     {statusSteps.map((step, index) => (
                       <div key={step} className="flex flex-col items-center gap-1">
@@ -330,7 +332,6 @@ export const RiderDashboardPage = () => {
                     ))}
                   </div>
 
-                  {/* Action Button */}
                   {activeDelivery.status === 'picked_up' && (
                     <Button className="w-full" onClick={() => updateDeliveryStatus('on_the_way')}>
                       <Navigation className="h-4 w-4 mr-2" />

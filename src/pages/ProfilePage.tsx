@@ -10,7 +10,8 @@ import {
   Settings,
   Heart,
   Moon,
-  Sun
+  Sun,
+  LayoutDashboard
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Header } from '@/components/layout/Header';
@@ -53,10 +54,10 @@ export const ProfilePage = () => {
           {isAuthenticated && user ? (
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                {user.name.charAt(0).toUpperCase()}
+                {(user.name || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <h2 className="text-lg font-bold">{user.name}</h2>
+                <h2 className="text-lg font-bold">{user.name || 'User'}</h2>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
               </div>
               <button
@@ -101,6 +102,25 @@ export const ProfilePage = () => {
             );
           })}
         </section>
+
+        {/* Admin Section */}
+        {isAuthenticated && user?.role === 'admin' && (
+          <section className="mb-6 rounded-xl bg-card shadow-card overflow-hidden border border-amber-200 dark:border-amber-900">
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 px-4 py-2 border-b border-amber-200 dark:border-amber-900">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Admin Tools</p>
+            </div>
+            <button
+              onClick={() => navigate('/admin/menu')}
+              className="flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 border-b"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <LayoutDashboard className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <span className="flex-1 text-left font-medium">Admin Dashboard</span>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </section>
+        )}
 
         {/* Dark Mode Toggle */}
         <section className="mb-6 rounded-xl bg-card shadow-card overflow-hidden">

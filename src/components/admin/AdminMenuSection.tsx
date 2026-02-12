@@ -7,14 +7,30 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PriceDisplay } from '@/components/ui/PriceDisplay';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Tables } from '@/integrations/supabase/types';
 
-type MenuItem = Tables<'menu_items'>;
-type MenuCategory = Tables<'menu_categories'>;
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  category_id: string;
+  image_url: string;
+  is_featured: boolean;
+  is_available: boolean;
+  preparation_time: number;
+}
+
+interface MenuCategory {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string;
+  display_order: number;
+  is_active: boolean;
+}
 
 export const AdminMenuSection = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -22,6 +38,18 @@ export const AdminMenuSection = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    category_id: '',
+    preparation_time: '',
+    is_featured: false,
+    is_available: true,
+  });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   useEffect(() => {
     fetchData();
@@ -31,49 +59,134 @@ export const AdminMenuSection = () => {
     setLoading(true);
     try {
       const [itemsRes, catsRes] = await Promise.all([
-        supabase.from('menu_items').select('*').order('name'),
-        supabase.from('menu_categories').select('*').order('display_order')
+        fetch('http://localhost:4000/api/admin/products'),
+        fetch('http://localhost:4000/api/categories'),
       ]);
 
-      if (itemsRes.error) throw itemsRes.error;
-      if (catsRes.error) throw catsRes.error;
-
-      setMenuItems(itemsRes.data || []);
-      setCategories(catsRes.data || []);
-    } catch (error: any) {
-      toast.error('Failed to load menu data: ' + error.message);
+      if (itemsRes.ok) {
+        const items = await itemsRes.json();
+        setMenuItems(items);
+      }
+      if (catsRes.ok) {
+        const cats = await catsRes.json();
+        setCategories(cats);
+      }
+    } catch (error) {
+      console.error('Failed to load menu data:', error);
+      toast.error('Failed to load menu data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
-    
-    try {
-      const { error } = await supabase.from('menu_items').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('Menu item deleted');
-      fetchData();
-    } catch (error: any) {
-      toast.error('Failed to delete: ' + error.message);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  };
-
-  const handleEdit = (item: MenuItem) => {
-    setEditingItem(item);
-    setDialogOpen(true);
   };
 
   const handleAddNew = () => {
     setEditingItem(null);
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      category_id: '',
+      preparation_time: '',
+      is_featured: false,
+      is_available: true,
+    });
+    setSelectedImage(null);
+    setImagePreview('');
     setDialogOpen(true);
   };
 
-  const getCategoryName = (categoryId: string | null) => {
-    if (!categoryId) return 'Uncategorized';
-    const cat = categories.find(c => c.id === categoryId);
-    return cat?.name || 'Unknown';
+  const handleEdit = (item: MenuItem) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      category_id: item.category_id,
+      preparation_time: item.preparation_time.toString(),
+      is_featured: item.is_featured,
+      is_available: item.is_available,
+    });
+    setImagePreview(item.image_url);
+    setSelectedImage(null);
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.name || !formData.price || !formData.category_id) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', formData.name);
+      fd.append('description', formData.description);
+      fd.append('price', formData.price);
+      fd.append('category_id', formData.category_id);
+      fd.append('preparation_time', formData.preparation_time || '15');
+      fd.append('is_featured', String(formData.is_featured));
+      fd.append('is_available', String(formData.is_available));
+
+      if (selectedImage) {
+        fd.append('image', selectedImage);
+      }
+
+      const url = editingItem
+        ? `http://localhost:4000/api/admin/products/${editingItem.id}`
+        : 'http://localhost:4000/api/admin/products';
+
+      const response = await fetch(url, {
+        method: editingItem ? 'PUT' : 'POST',
+        body: fd,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save product');
+      }
+
+      toast.success(editingItem ? 'Product updated' : 'Product created');
+      setDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error saving product:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save product');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this product?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/admin/products/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete product');
+      }
+
+      toast.success('Product deleted');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Failed to delete product');
+    }
   };
 
   if (loading) {
@@ -94,9 +207,6 @@ export const AdminMenuSection = () => {
         </Button>
       </div>
 
-      {/* Categories Management */}
-      <CategoryManager categories={categories} onRefresh={fetchData} />
-
       {/* Menu Items Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {menuItems.map((item) => (
@@ -105,429 +215,219 @@ export const AdminMenuSection = () => {
               <div className="aspect-video bg-muted rounded-lg mb-3 overflow-hidden">
                 {item.image_url ? (
                   <img 
-                    src={item.image_url} 
+                    src={item.image_url.startsWith('http') ? item.image_url : `http://localhost:4000${item.image_url}`}
                     alt={item.name}
-                    className="w-full h-full object-cover"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      console.error('Image failed to load:', item.image_url);
+                      (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3C/svg%3E';
+                    }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    No image
-                  </div>
+                  <div className="h-full flex items-center justify-center text-muted-foreground">No image</div>
                 )}
               </div>
-              <div className="space-y-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-xs text-muted-foreground">{getCategoryName(item.category_id)}</p>
-                  </div>
-                  <PriceDisplay price={item.price} className="font-bold text-primary" />
-                </div>
-                {item.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                )}
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${item.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {item.is_available ? 'Available' : 'Unavailable'}
-                    </span>
-                    {item.is_featured && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-                        Featured
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+              
+              <h3 className="font-semibold text-sm mb-1">{item.name}</h3>
+              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{item.description}</p>
+              
+              <div className="flex items-center justify-between mb-3">
+                <PriceDisplay price={Number(item.price)} size="sm" />
+                <span className="text-xs bg-muted px-2 py-1 rounded">
+                  {item.preparation_time}min
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEdit(item)}
+                  className="flex-1"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDelete(item.id)}
+                  className="flex-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {menuItems.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            No menu items yet. Click "Add Item" to create your first menu item.
-          </CardContent>
-        </Card>
-      )}
-
       {/* Add/Edit Dialog */}
-      <MenuItemDialog 
-        open={dialogOpen} 
-        onOpenChange={setDialogOpen}
-        item={editingItem}
-        categories={categories}
-        onSuccess={() => {
-          setDialogOpen(false);
-          fetchData();
-        }}
-      />
-    </div>
-  );
-};
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem ? 'Edit Product' : 'Add New Product'}
+            </DialogTitle>
+          </DialogHeader>
 
-// Category Manager Component
-const CategoryManager = ({ categories, onRefresh }: { categories: MenuCategory[]; onRefresh: () => void }) => {
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [adding, setAdding] = useState(false);
-
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    setAdding(true);
-    try {
-      const { error } = await supabase.from('menu_categories').insert({
-        name: newCategoryName.trim(),
-        display_order: categories.length
-      });
-      if (error) throw error;
-      toast.success('Category added');
-      setNewCategoryName('');
-      onRefresh();
-    } catch (error: any) {
-      toast.error('Failed to add category: ' + error.message);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Delete this category? Items in this category will become uncategorized.')) return;
-    try {
-      const { error } = await supabase.from('menu_categories').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('Category deleted');
-      onRefresh();
-    } catch (error: any) {
-      toast.error('Failed to delete: ' + error.message);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Categories</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <div key={cat.id} className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full">
-              <span className="text-sm">{cat.name}</span>
-              <button 
-                onClick={() => handleDeleteCategory(cat.id)}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input 
-            placeholder="New category name" 
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
-          />
-          <Button onClick={handleAddCategory} disabled={adding || !newCategoryName.trim()}>
-            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Menu Item Dialog Component
-interface MenuItemDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  item: MenuItem | null;
-  categories: MenuCategory[];
-  onSuccess: () => void;
-}
-
-const MenuItemDialog = ({ open, onOpenChange, item, categories, onSuccess }: MenuItemDialogProps) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category_id: '',
-    is_available: true,
-    is_featured: false,
-    preparation_time: '15',
-    image_url: ''
-  });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    if (item) {
-      setFormData({
-        name: item.name,
-        description: item.description || '',
-        price: String(item.price),
-        category_id: item.category_id || '',
-        is_available: item.is_available ?? true,
-        is_featured: item.is_featured ?? false,
-        preparation_time: String(item.preparation_time || 15),
-        image_url: item.image_url || ''
-      });
-      setImagePreview(item.image_url);
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        price: '',
-        category_id: '',
-        is_available: true,
-        is_featured: false,
-        preparation_time: '15',
-        image_url: ''
-      });
-      setImagePreview(null);
-    }
-    setImageFile(null);
-  }, [item, open]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image must be less than 5MB');
-        return;
-      }
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return formData.image_url || null;
-    
-    setUploading(true);
-    try {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('menu-images')
-        .upload(fileName, imageFile);
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: urlData } = supabase.storage
-        .from('menu-images')
-        .getPublicUrl(fileName);
-      
-      return urlData.publicUrl;
-    } catch (error: any) {
-      toast.error('Failed to upload image: ' + error.message);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name.trim() || !formData.price) {
-      toast.error('Name and price are required');
-      return;
-    }
-    
-    setSaving(true);
-    try {
-      const imageUrl = await uploadImage();
-      
-      const payload = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        price: parseFloat(formData.price),
-        category_id: formData.category_id || null,
-        is_available: formData.is_available,
-        is_featured: formData.is_featured,
-        preparation_time: parseInt(formData.preparation_time) || 15,
-        image_url: imageUrl
-      };
-      
-      if (item) {
-        const { error } = await supabase.from('menu_items').update(payload).eq('id', item.id);
-        if (error) throw error;
-        toast.success('Menu item updated');
-      } else {
-        const { error } = await supabase.from('menu_items').insert(payload);
-        if (error) throw error;
-        toast.success('Menu item created');
-      }
-      
-      onSuccess();
-    } catch (error: any) {
-      toast.error('Failed to save: ' + error.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{item ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Image Upload */}
-          <div className="space-y-2">
-            <Label>Image</Label>
-            <div className="border-2 border-dashed rounded-lg p-4 text-center">
-              {imagePreview ? (
-                <div className="relative">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="w-full h-40 object-cover rounded-lg"
-                  />
-                  <Button 
-                    type="button"
-                    variant="destructive" 
-                    size="icon" 
-                    className="absolute top-2 right-2 h-8 w-8"
-                    onClick={() => {
-                      setImageFile(null);
-                      setImagePreview(null);
-                      setFormData(f => ({ ...f, image_url: '' }));
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <label className="cursor-pointer block">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Click to upload image</span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
-            <Input 
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData(f => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Grilled Chicken Quarter"
-              required
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea 
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(f => ({ ...f, description: e.target.value }))}
-              placeholder="Describe the item..."
-              rows={2}
-            />
-          </div>
-
-          {/* Price & Category */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4 pt-4">
+            {/* Image Upload */}
             <div className="space-y-2">
-              <Label htmlFor="price">Price (KES) *</Label>
-              <Input 
-                id="price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.price}
-                onChange={(e) => setFormData(f => ({ ...f, price: e.target.value }))}
-                placeholder="0.00"
+              <Label>Product Image</Label>
+              <div className="relative aspect-square rounded-lg border-2 border-dashed bg-muted/50 overflow-hidden">
+                {imagePreview ? (
+                  <>
+                    <img 
+                      src={imagePreview.startsWith('http') ? imagePreview : `http://localhost:4000${imagePreview}`}
+                      alt="Preview" 
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        console.error('Preview image failed to load:', imagePreview);
+                        (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3C/svg%3E';
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        setImagePreview('');
+                        setSelectedImage(null);
+                      }}
+                      className="absolute top-2 right-2 bg-destructive text-white rounded-full p-1"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <label className="flex h-full items-center justify-center cursor-pointer hover:bg-muted/70 transition-colors">
+                    <div className="text-center">
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData(f => ({ ...f, name: e.target.value }))}
+                placeholder="Product name"
                 required
               />
             </div>
+
+            {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select 
-                value={formData.category_id} 
-                onValueChange={(v) => setFormData(f => ({ ...f, category_id: v }))}
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(f => ({ ...f, description: e.target.value }))}
+                placeholder="Product description"
+                rows={2}
+              />
+            </div>
+
+            {/* Price & Category */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price">Price (KES) *</Label>
+                <Input 
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.price}
+                  onChange={(e) => setFormData(f => ({ ...f, price: e.target.value }))}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={formData.category_id} 
+                  onValueChange={(v) => setFormData(f => ({ ...f, category_id: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Prep Time */}
+            <div className="space-y-2">
+              <Label htmlFor="prep">Preparation Time (mins)</Label>
+              <Input 
+                id="prep"
+                type="number"
+                min="1"
+                value={formData.preparation_time}
+                onChange={(e) => setFormData(f => ({ ...f, preparation_time: e.target.value }))}
+                placeholder="15"
+              />
+            </div>
+
+            {/* Toggles */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Available</Label>
+                <Switch 
+                  checked={formData.is_available}
+                  onCheckedChange={(v) => setFormData(f => ({ ...f, is_available: v }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Featured</Label>
+                <Switch 
+                  checked={formData.is_featured}
+                  onCheckedChange={(v) => setFormData(f => ({ ...f, is_featured: v }))}
+                />
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                className="flex-1"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={uploading}
+                className="flex-1"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  editingItem ? 'Update' : 'Create'
+                )}
+              </Button>
             </div>
           </div>
-
-          {/* Prep Time */}
-          <div className="space-y-2">
-            <Label htmlFor="prep_time">Preparation Time (minutes)</Label>
-            <Input 
-              id="prep_time"
-              type="number"
-              min="1"
-              value={formData.preparation_time}
-              onChange={(e) => setFormData(f => ({ ...f, preparation_time: e.target.value }))}
-            />
-          </div>
-
-          {/* Toggles */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="available">Available</Label>
-            <Switch 
-              id="available"
-              checked={formData.is_available}
-              onCheckedChange={(v) => setFormData(f => ({ ...f, is_available: v }))}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="featured">Featured</Label>
-            <Switch 
-              id="featured"
-              checked={formData.is_featured}
-              onCheckedChange={(v) => setFormData(f => ({ ...f, is_featured: v }))}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1" disabled={saving || uploading}>
-              {(saving || uploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {item ? 'Update' : 'Create'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
-
-export default AdminMenuSection;

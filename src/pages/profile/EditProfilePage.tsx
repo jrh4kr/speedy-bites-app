@@ -38,7 +38,7 @@ export const EditProfilePage = () => {
         <div className="mb-8 flex flex-col items-center">
           <div className="relative">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground">
-              {formData.name.charAt(0).toUpperCase() || 'U'}
+              {(formData.name || 'U').charAt(0).toUpperCase()}
             </div>
             <button className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
               <Camera className="h-4 w-4" />

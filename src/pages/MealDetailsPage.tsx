@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Heart, Share2, Star } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
@@ -6,18 +6,73 @@ import { Button } from '@/components/ui/button';
 import { PriceDisplay, formatPrice } from '@/components/ui/PriceDisplay';
 import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
-import { mockMenuItems } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+import type { MenuItem } from '@/lib/api';
 import { toast } from 'sonner';
+
+// Optional local interface for component-specific properties
+interface MealDetailsItem extends MenuItem {}
 
 export const MealDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { user } = useAuth();
   
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [item, setItem] = useState<MenuItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
-  const item = mockMenuItems.find(i => i.id === id);
+  useEffect(() => {
+    if (id) {
+      fetchMenuItem();
+      if (user) {
+        checkIfFavorite();
+      }
+    }
+  }, [id, user]);
+
+  const fetchMenuItem = async () => {
+    try {
+      if (!id) return;
+      const data = await api.getMenuItem(id);
+      setItem(data as MenuItem);
+    } catch (error) {
+      console.error('Error fetching menu item:', error);
+      toast.error('Failed to load item');
+      navigate('/menu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkIfFavorite = async () => {
+    // TODO: Implement favorites API endpoint
+    // For now, favorites are stored in local state only
+  };
+
+  const toggleFavorite = async () => {
+    // Local state toggle for favorites - full API implementation to follow
+    setIsFavorite(!isFavorite);
+    toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
+        <Header showBack />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading item...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!item) {
     return (
@@ -45,7 +100,7 @@ export const MealDetailsPage = () => {
       {/* Hero Image */}
       <div className="relative h-72 bg-muted">
         <img
-          src={item.image}
+          src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'}
           alt={item.name}
           className="h-full w-full object-cover"
         />
@@ -59,9 +114,10 @@ export const MealDetailsPage = () => {
         {/* Action buttons */}
         <div className="absolute bottom-4 right-4 flex gap-2">
           <button
-            onClick={() => setIsFavorite(!isFavorite)}
+            onClick={toggleFavorite}
+            disabled={isFavoriteLoading}
             className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm shadow-card transition-colors',
+              'flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm shadow-card transition-colors disabled:opacity-50',
               isFavorite && 'bg-primary text-primary-foreground'
             )}
           >

@@ -83,7 +83,7 @@ export const LoginPage = () => {
           return;
         }
         toast.success('Account created successfully!');
-        navigate('/', { replace: true });
+        navigate('/onboarding', { replace: true });
       } else {
         const { error } = await login(formData.email, formData.password);
         if (error) {
@@ -96,7 +96,7 @@ export const LoginPage = () => {
           return;
         }
         toast.success('Welcome back!');
-        navigate('/', { replace: true });
+        navigate('/splash', { replace: true });
       }
     } catch (err) {
       toast.error('An unexpected error occurred');

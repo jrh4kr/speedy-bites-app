@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - VITE_SUPABASE_URL
+      - VITE_SUPABASE_PUBLISHABLE_KEY
+      - VITE_API_URL
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: speedy_admin
+      POSTGRES_PASSWORD: secure_password_here
+      POSTGRES_DB: speedy_bites
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  db_data:

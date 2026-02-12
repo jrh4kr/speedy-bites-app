@@ -1,93 +1,192 @@
-import { Search } from 'lucide-react';
+import { Search, Zap, TrendingUp, UtensilsCrossed, Beef, Leaf } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { FoodCard } from '@/components/food/FoodCard';
 import { CategoryCard } from '@/components/food/CategoryCard';
 import { PromoCarousel } from '@/components/promo/PromoBanner';
 import { StickyCartButton } from '@/components/cart/StickyCartButton';
-import { mockCategories, mockMenuItems, promoBanners } from '@/data/mockData';
+import { api } from '@/lib/api';
+import type { Category, MenuItem } from '@/lib/api';
+import { promoBanners } from '@/data/mockData';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export const HomePage = () => {
-  const featuredItems = mockMenuItems.filter(item => item.isFeatured);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch categories from API
+        const categoriesData = await api.getCategories();
+        setCategories(categoriesData || []);
+
+        // Fetch menu items from API
+        const itemsData = await api.getMenuItems();
+        setMenuItems(itemsData || []);
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate item count for each category by filtering menu items
+  const categoriesWithCounts = categories.map(category => ({
+    ...category,
+    itemCount: menuItems.filter(item => item.categoryId === category.id).length,
+  }));
+
+  // Split items by category for display
+  const restaurantItems = menuItems.filter(item => item.categoryId === categoriesWithCounts.find(c => c.name === 'Restaurant')?.id).slice(0, 4);
+  const butcheryItems = menuItems.filter(item => item.categoryId === categoriesWithCounts.find(c => c.name === 'Butchery')?.id).slice(0, 4);
+  const groceryItems = menuItems.filter(item => item.categoryId === categoriesWithCounts.find(c => c.name === 'Groceries')?.id);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background lg:min-h-0 lg:bg-transparent">
       <Header />
       
-      <main className="pb-4 lg:pb-0">
-        {/* Search Bar - Hidden on desktop */}
-        <div className="px-4 mb-5 lg:hidden">
+      <main className="pb-4 lg:pb-0 px-4 lg:px-8">
+        {/* Search Bar */}
+        <div className="mb-6 pt-4">
           <Link 
             to="/menu"
-            className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 shadow-card"
+            className="flex items-center gap-3 rounded-2xl bg-card px-4 py-4 shadow-card hover:shadow-card-hover transition-all duration-300 ring-1 ring-border/50"
           >
             <Search className="h-5 w-5 text-muted-foreground" />
-            <span className="text-muted-foreground">Search for meals...</span>
+            <span className="text-muted-foreground text-sm font-medium">Search for meals...</span>
           </Link>
         </div>
 
         {/* Promo Banners */}
-        <section className="mb-6">
+        <section className="mb-8">
           <PromoCarousel promos={promoBanners} />
         </section>
 
-        {/* Categories */}
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold">Categories</h2>
-            <Link to="/menu" className="text-sm font-medium text-primary">
-              See All
-            </Link>
+        {/* Categories - Horizontal Scroll */}
+        <section className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1 h-6 bg-primary rounded-full" />
+            <h2 className="text-xl font-bold">Browse Categories</h2>
           </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-6 px-6 pb-2 lg:overflow-visible lg:px-0 lg:mx-0 lg:grid lg:grid-cols-6 lg:gap-4">
-            {mockCategories.slice(0, 6).map(category => (
-              <CategoryCard 
-                key={category.id} 
-                category={category} 
-                variant="compact"
-                className="flex-shrink-0 lg:flex-shrink"
-              />
-            ))}
+          <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2 lg:overflow-visible lg:px-0 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4">
+            {categoriesWithCounts.map(category => {
+              // Get icon based on category name
+              const getIconForCategory = (name: string) => {
+                const lowerName = name.toLowerCase();
+                if (lowerName.includes('restaurant')) {
+                  return UtensilsCrossed;
+                } else if (lowerName.includes('butcher')) {
+                  return Beef;
+                } else if (lowerName.includes('grocer')) {
+                  return Leaf;
+                }
+                return UtensilsCrossed;
+              };
+              
+              const IconComponent = getIconForCategory(category.name);
+              
+              return (
+                <Link
+                  key={category.id}
+                  to={`/menu?category=${category.id}`}
+                  className="flex-shrink-0 lg:flex-shrink flex flex-col items-center gap-3 px-1 py-4 rounded-2xl bg-card p-4 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 group"
+                >
+                  {/* Icon Badge */}
+                  <div className="bg-gradient-to-br from-primary to-primary/80 p-4 rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <IconComponent className="h-8 w-8 text-white" />
+                  </div>
+                  
+                  {/* Text */}
+                  <div className="text-center">
+                    <h3 className="font-bold text-foreground text-base line-clamp-1">{category.name}</h3>
+                    <span className="text-xs text-muted-foreground font-medium">{category.itemCount || 0} items</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
-        {/* Featured Items */}
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold">Featured</h2>
-            <Link to="/menu?featured=true" className="text-sm font-medium text-primary">
-              See All
+        {/* Featured Items - Restaurant Section */}
+        {restaurantItems.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="h-5 w-5 text-accent" />
+              <h2 className="text-xl font-bold">Restaurant Specials</h2>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              {restaurantItems.map(item => (
+                <FoodCard 
+                  key={item.id} 
+                  item={item}
+                />
+              ))}
+            </div>
+            <Link 
+              to="/menu?category=restaurant"
+              className="block mt-4 text-center py-2 text-primary font-semibold hover:text-primary/80 transition-colors"
+            >
+              View All Restaurant Items →
             </Link>
-          </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-6 px-6 pb-2 lg:overflow-visible lg:px-0 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-4">
-            {featuredItems.map(item => (
-              <FoodCard 
-                key={item.id} 
-                item={item}
-                className="flex-shrink-0 w-44 lg:w-auto"
-              />
-            ))}
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* Popular Items */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold">Popular Near You</h2>
-            <Link to="/menu" className="text-sm font-medium text-primary">
-              See All
+        {/* Popular Items - Butchery Section */}
+        {butcheryItems.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="h-5 w-5 text-accent" />
+              <h2 className="text-xl font-bold">Butchery & Meats</h2>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              {butcheryItems.map(item => (
+                <FoodCard 
+                  key={item.id} 
+                  item={item}
+                />
+              ))}
+            </div>
+            <Link 
+              to="/menu?category=butchery"
+              className="block mt-4 text-center py-2 text-primary font-semibold hover:text-primary/80 transition-colors"
+            >
+              View All Butchery Items →
             </Link>
-          </div>
-          <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-            {mockMenuItems.slice(0, 4).map(item => (
-              <FoodCard 
-                key={item.id} 
-                item={item}
-                variant="horizontal"
-              />
-            ))}
-          </div>
-        </section>
+          </section>
+        )}
+
+        {/* Groceries Section */}
+        {groceryItems.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">🥬</span>
+              <h2 className="text-xl font-bold">Fresh Groceries</h2>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              {groceryItems.map(item => (
+                <FoodCard 
+                  key={item.id} 
+                  item={item}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <StickyCartButton />

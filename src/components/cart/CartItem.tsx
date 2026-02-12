@@ -20,7 +20,7 @@ export const CartItemCard = ({ item, className }: CartItemProps) => {
     )}>
       <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg">
         <img 
-          src={item.menuItem.image} 
+          src={item.menuItem.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'} 
           alt={item.menuItem.name}
           className="h-full w-full object-cover"
           loading="lazy"

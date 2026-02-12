@@ -4,7 +4,6 @@ import { useCart } from '@/contexts/CartContext';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { NotificationCenter, useNotifications } from '@/components/notifications/NotificationCenter';
 
 interface HeaderProps {
   title?: string;
@@ -24,7 +23,7 @@ export const Header = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { itemCount } = useCart();
-  const { notifications, markAsRead, clearAll } = useNotifications('customer');
+  
 
   const isHome = location.pathname === '/';
 
@@ -63,13 +62,6 @@ export const Header = ({
         {/* Right */}
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          {isHome && (
-            <NotificationCenter
-              notifications={notifications}
-              onMarkAsRead={markAsRead}
-              onClearAll={clearAll}
-            />
-          )}
           {showCart && (
             <Link 
               to="/cart"

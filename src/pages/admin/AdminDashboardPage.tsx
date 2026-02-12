@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Package, DollarSign, Clock, Users, TrendingUp, Bike, LayoutDashboard, BarChart3, LogOut, Menu, X, UtensilsCrossed } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PriceDisplay } from '@/components/ui/PriceDisplay';
 import { Logo } from '@/components/ui/Logo';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Import section components
 import { AdminOrdersSection } from '@/components/admin/AdminOrdersSection';
@@ -27,15 +27,31 @@ const navItems = [
 
 export const AdminDashboardPage = () => {
   const navigate = useNavigate();
+  const { logout, user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const stats = mockDashboardStats;
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_user');
+  const handleLogout = async () => {
+    await logout();
     toast.success('Logged out successfully');
     navigate('/admin/login');
   };
+
+  // Redirect if not admin
+  if (isAuthenticated && user && user.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <p className="text-lg font-semibold mb-2">Access Denied</p>
+            <p className="text-muted-foreground mb-4">You need admin privileges to access this page.</p>
+            <Button onClick={() => navigate('/')}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -162,8 +178,8 @@ const DashboardContent = ({ stats }: { stats: typeof mockDashboardStats }) => (
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="h-5 w-5 text-green-600" />
+            <div className="p-2 bg-success/10 rounded-lg">
+              <DollarSign className="h-5 w-5 text-success" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Revenue</p>
@@ -176,8 +192,8 @@ const DashboardContent = ({ stats }: { stats: typeof mockDashboardStats }) => (
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600" />
+            <div className="p-2 bg-warning/10 rounded-lg">
+              <Clock className="h-5 w-5 text-warning" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Pending</p>
@@ -190,8 +206,8 @@ const DashboardContent = ({ stats }: { stats: typeof mockDashboardStats }) => (
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Bike className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Bike className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Active Riders</p>
@@ -204,8 +220,8 @@ const DashboardContent = ({ stats }: { stats: typeof mockDashboardStats }) => (
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-accent" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Avg Delivery</p>
@@ -218,8 +234,8 @@ const DashboardContent = ({ stats }: { stats: typeof mockDashboardStats }) => (
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Users className="h-5 w-5 text-orange-600" />
+            <div className="p-2 bg-warning/10 rounded-lg">
+              <Users className="h-5 w-5 text-warning" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Satisfaction</p>
@@ -266,10 +282,10 @@ const DashboardContent = ({ stats }: { stats: typeof mockDashboardStats }) => (
               <div className="text-right">
                 <PriceDisplay price={order.total} className="font-semibold" />
                 <span className={`text-xs px-2 py-1 rounded-full ${
-                  order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                  order.status === 'on_the_way' ? 'bg-blue-100 text-blue-700' :
-                  order.status === 'preparing' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-700'
+                  order.status === 'delivered' ? 'bg-success/10 text-success' :
+                  order.status === 'on_the_way' ? 'bg-primary/10 text-primary' :
+                  order.status === 'preparing' ? 'bg-warning/10 text-warning' :
+                  'bg-muted text-muted-foreground'
                 }`}>
                   {order.status.replace('_', ' ')}
                 </span>

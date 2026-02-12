@@ -154,15 +154,78 @@
   .skeleton-pulse {
     @apply animate-pulse bg-muted;
   }
+
+  /* Smooth transitions and animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  .slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
 }
 
 @layer components {
-  /* Food card hover effect */
+  /* Enhanced food card with professional styling */
   .food-card {
-    @apply transition-all duration-200 ease-out;
+    @apply transition-all duration-300 ease-out;
   }
+
   .food-card:active {
     @apply scale-[0.98];
+  }
+
+  /* Image container with smooth scaling */
+  .image-container {
+    @apply relative overflow-hidden bg-secondary rounded-2xl ring-1 ring-border/20;
+  }
+
+  .image-container img {
+    @apply transition-transform duration-300 ease-out;
+  }
+
+  .image-container:hover img {
+    @apply scale-110;
+  }
+
+  /* Enhanced button styling */
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold text-secondary-foreground bg-secondary hover:bg-secondary/80 transition-all duration-200 active:scale-95;
+  }
+
+  /* Price styling */
+  .price-display {
+    @apply font-bold text-primary text-lg;
+  }
+
+  .price-original {
+    @apply line-through text-muted-foreground text-sm;
   }
 
   /* Bottom navigation item */
@@ -186,4 +249,35 @@
   .status-delivered {
     @apply bg-success/15 text-success;
   }
+
+  /* Section header with accent line */
+  .section-header {
+    @apply flex items-center gap-3 mb-4;
+  }
+
+  .section-header::before {
+    @apply content-[''] w-1 h-6 bg-primary rounded-full;
+  }
+
+  /* Gradient overlay for category cards */
+  .gradient-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/40 to-transparent;
+  }
+
+  /* Card elevation on hover */
+  .card-elevated:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Smooth link transitions */
+  a {
+    @apply transition-colors duration-200;
+  }
+
+  /* Focus states for accessibility */
+  button:focus-visible,
+  a:focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
 }
+

@@ -1,4 +1,4 @@
-import { Plus, Star } from 'lucide-react';
+import { Plus, Star, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { PriceDisplay } from '@/components/ui/PriceDisplay';
@@ -25,37 +25,50 @@ export const FoodCard = ({ item, variant = 'default', className }: FoodCardProps
       <Link 
         to={`/menu/${item.id}`}
         className={cn(
-          'food-card flex gap-3 rounded-xl bg-card p-3 shadow-card',
-          !item.isAvailable && 'opacity-60',
+          'food-card group flex gap-4 rounded-2xl bg-card p-4 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1',
+          !item.is_available && 'opacity-60',
           className
         )}
       >
-        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
+        <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-xl ring-1 ring-border/50">
           <img 
-            src={item.image} 
+            src={item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'} 
             alt={item.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
             loading="lazy"
           />
-          {!item.isAvailable && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-              <span className="text-xs font-medium text-muted-foreground">Sold Out</span>
+          {!item.isAvailable && !item.is_available && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/85 backdrop-blur-sm">
+              <span className="text-xs font-semibold text-muted-foreground">Sold Out</span>
+            </div>
+          )}
+          {item.isFeatured && item.is_featured && (
+            <div className="absolute top-2 right-2 bg-accent text-accent-foreground px-2 py-1 rounded-full text-xs font-semibold">
+              Featured
             </div>
           )}
         </div>
         <div className="flex flex-1 flex-col justify-between py-1">
           <div>
-            <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h3 className="font-bold text-sm line-clamp-1 text-foreground">{item.name}</h3>
+              {item.rating && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                  <span className="text-xs font-semibold">{item.rating}</span>
+                </div>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
               {item.description}
             </p>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mt-2">
             <PriceDisplay price={item.price} originalPrice={item.originalPrice} size="sm" />
-            {item.isAvailable && (
+            {(item.isAvailable ?? item.is_available) && (
               <button
                 onClick={handleQuickAdd}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-90"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all active:scale-90 hover:bg-primary/90 shadow-md hover:shadow-lg"
                 aria-label={`Add ${item.name} to cart`}
               >
                 <Plus className="h-4 w-4" />
@@ -71,50 +84,52 @@ export const FoodCard = ({ item, variant = 'default', className }: FoodCardProps
     <Link 
       to={`/menu/${item.id}`}
       className={cn(
-        'food-card block rounded-xl bg-card p-3 shadow-card',
-        !item.isAvailable && 'opacity-60',
+        'food-card group block rounded-2xl bg-card overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1',
+        !(item.isAvailable ?? item.is_available) && 'opacity-60',
         className
       )}
     >
-      <div className="relative aspect-square overflow-hidden rounded-lg mb-3">
+      <div className="relative aspect-square overflow-hidden bg-secondary ring-1 ring-border/20 mb-3">
         <img 
-          src={item.image} 
+          src={item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'} 
           alt={item.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
         {item.originalPrice && item.originalPrice > item.price && (
-          <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+          <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-lg">
             SALE
           </span>
         )}
-        {!item.isAvailable && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-            <span className="text-sm font-medium text-muted-foreground">Sold Out</span>
+        {!(item.isAvailable ?? item.is_available) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/85 backdrop-blur-sm">
+            <span className="text-sm font-semibold text-muted-foreground">Sold Out</span>
           </div>
         )}
         {item.rating && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 backdrop-blur-sm">
-            <Star className="h-3 w-3 fill-accent text-accent" />
-            <span className="text-xs font-medium">{item.rating.toFixed(1)}</span>
+          <div className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 backdrop-blur-sm shadow-md ring-1 ring-border/50">
+            <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+            <span className="text-xs font-bold">{item.rating.toFixed(1)}</span>
           </div>
         )}
       </div>
-      <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
-      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 mb-2">
-        {item.description}
-      </p>
-      <div className="flex items-center justify-between">
-        <PriceDisplay price={item.price} originalPrice={item.originalPrice} size="sm" />
-        {item.isAvailable && (
-          <button
-            onClick={handleQuickAdd}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-90"
-            aria-label={`Add ${item.name} to cart`}
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        )}
+      <div className="px-4 pb-4">
+        <h3 className="font-bold text-sm line-clamp-1 text-foreground mb-1">{item.name}</h3>
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+          {item.description}
+        </p>
+        <div className="flex items-center justify-between">
+          <PriceDisplay price={item.price} originalPrice={item.originalPrice} size="sm" />
+          {(item.isAvailable ?? item.is_available) && (
+            <button
+              onClick={handleQuickAdd}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all active:scale-90 hover:bg-primary/90 shadow-md hover:shadow-lg"
+              aria-label={`Add ${item.name} to cart`}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
     </Link>
   );

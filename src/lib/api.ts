@@ -1,5 +1,5 @@
-// API Configuration - Replace with your Laravel backend URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// API Configuration - frontend will call the local API server by default
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 // Token storage keys
 const TOKEN_KEY = 'auth_token';
@@ -72,12 +72,86 @@ export const api = {
   
   logout: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
   
+  refreshAuthToken: (refreshToken: string) =>
+    apiFetch<{ token: string }>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    }),
+  
   // Menu
-  getCategories: () => apiFetch<Category[]>('/categories'),
-  getMenuItems: (categoryId?: string) =>
-    apiFetch<MenuItem[]>(categoryId ? `/menu?category=${categoryId}` : '/menu'),
-  getMenuItem: (id: string) => apiFetch<MenuItem>(`/menu/${id}`),
-  getFeaturedItems: () => apiFetch<MenuItem[]>('/menu/featured'),
+  getCategories: async () => {
+    const data = await apiFetch<any[]>('/categories');
+    return data.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      image: cat.image_url || '',
+      itemCount: cat.item_count || 0,
+    })) as Category[];
+  },
+  
+  getMenuItems: async (categoryId?: string) => {
+    const data = await apiFetch<any[]>(categoryId ? `/menu?category=${categoryId}` : '/menu');
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      price: Number(item.price) || 0,
+      originalPrice: item.original_price ? Number(item.original_price) : undefined,
+      image: item.image_url || '',
+      image_url: item.image_url || '', // Keep both for compatibility
+      category: item.category_name || '',
+      categoryId: item.category_id || '',
+      is_available: item.is_available !== false,
+      isAvailable: item.is_available !== false,
+      isFeatured: item.is_featured === true,
+      is_featured: item.is_featured === true,
+      rating: item.rating ? Number(item.rating) : undefined,
+    })) as MenuItem[];
+  },
+  
+  getMenuItem: async (id: string) => {
+    // Fetch all menu items and find the one with matching ID
+    // (backend doesn't have /menu/:id endpoint yet)
+    const allItems = await apiFetch<any[]>('/menu');
+    const item = allItems.find(i => i.id === id);
+    
+    if (!item) {
+      throw new Error('Menu item not found');
+    }
+    
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      price: Number(item.price) || 0,
+      originalPrice: item.original_price ? Number(item.original_price) : undefined,
+      image: item.image_url || '',
+      image_url: item.image_url || '',
+      category: item.category_name || '',
+      categoryId: item.category_id || '',
+      isAvailable: item.is_available !== false,
+      isFeatured: item.is_featured === true,
+      rating: item.rating ? Number(item.rating) : undefined,
+    } as MenuItem;
+  },
+  
+  getFeaturedItems: async () => {
+    const data = await apiFetch<any[]>('/menu/featured');
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      price: Number(item.price) || 0,
+      originalPrice: item.original_price ? Number(item.original_price) : undefined,
+      image: item.image_url || '',
+      image_url: item.image_url || '',
+      category: item.category_name || '',
+      categoryId: item.category_id || '',
+      isAvailable: item.is_available !== false,
+      isFeatured: item.is_featured === true,
+      rating: item.rating ? Number(item.rating) : undefined,
+    })) as MenuItem[];
+  },
   
   // Cart
   getCart: () => apiFetch<Cart>('/cart'),
@@ -94,6 +168,19 @@ export const api = {
   removeFromCart: (cartItemId: string) =>
     apiFetch<Cart>(`/cart/${cartItemId}`, { method: 'DELETE' }),
   clearCart: () => apiFetch<void>('/cart/clear', { method: 'DELETE' }),
+  
+  // Promo Codes
+  validatePromoCode: async (code: string, subtotal: number) => {
+    const data = await apiFetch<any>('/promo/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code, subtotal }),
+    });
+    return {
+      code: data.code,
+      discountAmount: Number(data.discount_amount) || 0,
+      discountType: data.discount_type,
+    };
+  },
   
   // Orders
   createOrder: (data: CreateOrderData) =>
@@ -115,6 +202,10 @@ export const api = {
   // Promos
   getPromos: () => apiFetch<Promo[]>('/promos'),
   validatePromo: (code: string) => apiFetch<Promo>(`/promos/validate/${code}`),
+  
+  // Auth helpers
+  setAuthToken,
+  clearAuth,
 };
 
 // Type definitions

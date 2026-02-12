@@ -2,13 +2,24 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Prefer using environment variables. For client-side (browser) use the
+// public/publishable key only. For server-side operations use the
+// SUPABASE_SERVICE_ROLE_KEY stored securely on your backend or in secrets.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  // Runtime warning so developers notice missing configuration early.
+  // Do not throw — in some test environments these may be intentionally absent.
+  // Production containers should always provide these values.
+  // eslint-disable-next-line no-console
+  console.warn('Missing Supabase env vars: VITE_SUPABASE_URL and/or VITE_SUPABASE_PUBLISHABLE_KEY.');
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL ?? '', SUPABASE_PUBLISHABLE_KEY ?? '', {
   auth: {
     storage: localStorage,
     persistSession: true,

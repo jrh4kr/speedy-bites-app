@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, CreditCard, Banknote, ChevronRight, Edit2 } from 'lucide-react';
+import { MapPin, CreditCard, Banknote, ChevronRight, Edit2, Loader2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { CartSummary } from '@/components/cart/CartSummary';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,15 @@ import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/components/ui/PriceDisplay';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 
 type PaymentMethod = 'mpesa' | 'cash';
 
 export const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { cart, clearCart } = useCart();
+  const { cart, itemCount, clearCart } = useCart();
+  const { user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
@@ -28,20 +31,71 @@ export const CheckoutPage = () => {
   const [notes, setNotes] = useState('');
 
   const handlePlaceOrder = async () => {
+    // Validation
+    if (!user) {
+      toast.error('Please sign in to place an order');
+      navigate('/login');
+      return;
+    }
+
     if (!address.street.trim()) {
       toast.error('Please enter your delivery address');
       return;
     }
 
+    if (itemCount === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      clearCart();
-      toast.success('Order placed successfully!');
-      navigate('/orders/ord-002', { replace: true }); // Navigate to order tracking
+    try {
+      // Prepare order payload with proper structure
+      const orderPayload = {
+        customer_id: user.id,
+        subtotal: cart.subtotal,
+        delivery_fee: cart.deliveryFee,
+        discount: cart.discount,
+        total: cart.total,
+        delivery_address: {
+          street: address.street.trim(),
+          city: address.city.trim(),
+          landmark: address.landmark.trim() || null,
+        },
+        notes: notes.trim() || null,
+        payment_method: paymentMethod,
+        items: cart.items.map(item => ({
+          menu_item_id: item.menuItem.id,
+          name: item.menuItem.name,
+          quantity: item.quantity,
+          unit_price: item.menuItem.price,
+          total_price: item.totalPrice,
+          notes: item.options?.notes || null,
+        })),
+        promo_code: cart.promoCode || null,
+      };
+
+      // Call API to create order
+      const response = await api.createOrder(orderPayload);
+
+      if (response.success) {
+        toast.success('Order placed successfully!');
+        clearCart();
+        
+        // Navigate to order tracking page
+        setTimeout(() => {
+          navigate(`/orders/${response.orderId}`);
+        }, 1500);
+      } else {
+        toast.error(response.error || 'Failed to place order');
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to place order');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

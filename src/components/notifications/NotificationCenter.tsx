@@ -10,6 +10,19 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+export interface Notification {
+  id: string;
+  type: 'order_confirmed' | 'preparing' | 'on_the_way' | 'delivered' | 'new_order' | 'assigned' | 'info' | 'success' | 'warning' | 'error';
+  title: string;
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  orderId?: string;
+  data?: any;
+}
 
 export interface Notification {
   id: string;
@@ -136,10 +149,41 @@ export const NotificationCenter = ({
   );
 };
 
-// Hook to simulate real-time notifications
+// Hook to manage notifications from local API
 export const useNotifications = (userType: 'customer' | 'rider' | 'admin') => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
+  // Fetch notifications from local API
+  const fetchNotifications = async () => {
+    if (!user) {
+      setNotifications([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // For now, we'll just return an empty list since notifications require a backend endpoint
+      // In a full implementation, you would have:
+      // const data = await api.getNotifications();
+      setNotifications([]);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      toast.error('Failed to load notifications');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // Refresh notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Since we're not using real-time subscriptions now, we'll just handle local state
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: Notification = {
       ...notification,
@@ -150,60 +194,25 @@ export const useNotifications = (userType: 'customer' | 'rider' | 'admin') => {
     setNotifications(prev => [newNotification, ...prev]);
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
+  const clearAll = async () => {
+    try {
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, read: true }))
+      );
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
   };
 
-  // Simulate initial notifications
-  useEffect(() => {
-    const mockNotifications: Notification[] = userType === 'customer' 
-      ? [
-          {
-            id: '1',
-            type: 'delivered',
-            title: 'Order Delivered!',
-            message: 'Your order #KNS-1234 has been delivered. Enjoy your meal!',
-            timestamp: new Date(Date.now() - 300000),
-            read: false,
-          },
-          {
-            id: '2',
-            type: 'preparing',
-            title: 'Order Being Prepared',
-            message: 'Your order #KNS-1235 is now being prepared by our chefs.',
-            timestamp: new Date(Date.now() - 1800000),
-            read: true,
-          },
-        ]
-      : userType === 'rider'
-      ? [
-          {
-            id: '1',
-            type: 'new_order',
-            title: 'New Order Available!',
-            message: 'New delivery available near you - KES 350 reward',
-            timestamp: new Date(Date.now() - 60000),
-            read: false,
-          },
-          {
-            id: '2',
-            type: 'assigned',
-            title: 'Order Assigned',
-            message: 'You have been assigned order #KNS-1236',
-            timestamp: new Date(Date.now() - 3600000),
-            read: true,
-          },
-        ]
-      : [];
-    
-    setNotifications(mockNotifications);
-  }, [userType]);
-
-  return { notifications, addNotification, markAsRead, clearAll };
+  return { notifications, addNotification, markAsRead, clearAll, isLoading };
 };
