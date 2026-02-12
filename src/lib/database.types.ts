@@ -1,3 +1,3 @@
-Need to install the following packages:
-supabase@2.72.8
-Ok to proceed? (y) 
+// Database types - using Supabase generated types
+// Re-export from the auto-generated types file
+export type { Database, Tables, TablesInsert, TablesUpdate, Enums } from '@/integrations/supabase/types';

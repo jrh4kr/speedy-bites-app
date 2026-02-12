@@ -77,18 +77,18 @@ export const CheckoutPage = () => {
       };
 
       // Call API to create order
-      const response = await api.createOrder(orderPayload);
+      const response = await api.createOrder(orderPayload as any);
 
-      if (response.success) {
+      if ((response as any).success || response.id) {
         toast.success('Order placed successfully!');
         clearCart();
         
         // Navigate to order tracking page
         setTimeout(() => {
-          navigate(`/orders/${response.orderId}`);
+          navigate(`/orders/${(response as any).orderId || response.id}`);
         }, 1500);
       } else {
-        toast.error(response.error || 'Failed to place order');
+        toast.error((response as any).error || 'Failed to place order');
       }
     } catch (error) {
       console.error('Error placing order:', error);

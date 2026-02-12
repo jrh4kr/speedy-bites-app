@@ -26,7 +26,7 @@ export interface Notification {
 
 export interface Notification {
   id: string;
-  type: 'order_confirmed' | 'preparing' | 'on_the_way' | 'delivered' | 'new_order' | 'assigned';
+  type: 'order_confirmed' | 'preparing' | 'on_the_way' | 'delivered' | 'new_order' | 'assigned' | 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;
   timestamp: Date;

@@ -45,6 +45,13 @@ app.use(requestLogger);
 // Serve static files for uploads
 app.use('/uploads', express.static(config.upload.directory));
 
+// Serve frontend static files (built by Vite) in production
+const distPath = path.join(__dirname, '..', 'dist');
+const fs = require('fs');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
+
 // ============================================
 // DATABASE CONFIGURATION
 // ============================================
@@ -540,14 +547,18 @@ app.get('/api/orders/:id', async (req, res) => {
 // ERROR HANDLING MIDDLEWARE
 // ============================================
 
-// 404 handler
-app.use((req, res) => {
-  logger.warn('404 Not Found', {
-    method: req.method,
-    url: req.url,
-    ip: req.ip,
-  });
-  res.status(404).json({ error: 'Not Found', message: 'The requested resource does not exist' });
+// SPA fallback — serve index.html for non-API routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+    logger.warn('404 Not Found', { method: req.method, url: req.url, ip: req.ip });
+    return res.status(404).json({ error: 'Not Found', message: 'The requested resource does not exist' });
+  }
+  // Serve index.html for SPA routes
+  const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.status(404).json({ error: 'Not Found' });
 });
 
 // Global error handler

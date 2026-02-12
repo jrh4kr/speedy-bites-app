@@ -89,7 +89,7 @@ export const FavoritesPage = () => {
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {favorites.map((item) => (
-              <FoodCard key={item.id} item={item} />
+              <FoodCard key={item.id} item={{ ...item, image: item.image_url || '', category: '', categoryId: item.category_id || '', isAvailable: item.is_available, isFeatured: item.is_featured, description: item.description || '' }} />
             ))}
           </div>
         )}

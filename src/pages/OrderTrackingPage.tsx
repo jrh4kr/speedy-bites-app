@@ -5,7 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { OrderProgress, OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/components/ui/PriceDisplay';
-import { DeliveryMap } from '@/components/map/DeliveryMap';
+// DeliveryMap removed - leaflet uninstalled
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -74,7 +74,7 @@ export const OrderTrackingPage = () => {
         return;
       }
 
-      setOrder(orderData as Order);
+      setOrder(orderData as unknown as Order);
       // Rider assignment would be fetched from API endpoint if it existed
       setRiderAssignment(null);
     } catch (error) {
@@ -165,14 +165,11 @@ export const OrderTrackingPage = () => {
       
       <main className="px-4 py-4 space-y-4">
         {/* Live Map for Active Orders */}
-        {order.status === 'on_the_way' && (
+         {order.status === 'on_the_way' && (
           <section className="rounded-xl overflow-hidden shadow-card">
-            <DeliveryMap
-              riderLocation={riderLocation}
-              customerLocation={customerLocation}
-              showRoute={true}
-              className="h-48"
-            />
+            <div className="h-48 bg-muted flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">Live map tracking coming soon</p>
+            </div>
             <div className="p-3 bg-card flex items-center justify-between border-t">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
@@ -307,20 +304,20 @@ export const OrderTrackingPage = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Order Number</span>
-              <span className="font-medium">{order.orderNumber}</span>
+              <span className="font-medium">{(order as any).orderNumber || order.id.slice(0, 8)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Order Date</span>
-              <span>{formatDate(order.createdAt)}</span>
+              <span>{formatDate(order.created_at)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Payment Method</span>
-              <span className="capitalize">{order.paymentMethod}</span>
+              <span className="capitalize">{(order as any).paymentMethod || 'Cash'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Payment Status</span>
-              <span className={order.paymentStatus === 'paid' ? 'text-success' : 'text-warning'}>
-                {order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+              <span className={(order as any).paymentStatus === 'paid' ? 'text-success' : 'text-warning'}>
+                {(order as any).paymentStatus === 'paid' ? 'Paid' : 'Pending'}
               </span>
             </div>
           </div>
